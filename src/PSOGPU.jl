@@ -1,9 +1,10 @@
 module PSOGPU
 
-using SciMLBase
+using SciMLBase, StaticArrays, Setfield, CUDA
 
 include("./algorithms.jl")
 include("./pso_cpu.jl")
+include("./pso_gpu.jl")
 
 function SciMLBase.__solve(prob::OptimizationProblem,
     opt::ParallelPSOCPU,

@@ -2,15 +2,6 @@
 
 ## Use lb and ub either as StaticArray or pass them separately as CuArrays
 ## Passing as CuArrays makes more sense, or maybe SArray? The based on no. of dimension
-
-using CUDA, StaticArrays, PSOGPU, Setfield
-
-device!(2)
-
-lb = @SArray [-1.0, -1.0]
-
-ub = @SArray [1.0, 1.0]
-
 struct PSOParticle{T1, T2 <: eltype(T1)}
     position::T1
     velocity::T1
@@ -61,7 +52,7 @@ function init_particles(prob, n_particles)
     return gbest, convert(Vector{typeof(particles[1])}, particles)
 end
 
-function update_particle_states!(prob, gpu_particles, gbest, w; c1 = 1.4962f0,
+function update_particle_states!(prob, gpu_particles, gbest_ref, w; c1 = 1.4962f0,
     c2 = 1.4962f0)
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(gpu_particles) && return
@@ -70,15 +61,17 @@ function update_particle_states!(prob, gpu_particles, gbest, w; c1 = 1.4962f0,
 
     ## Access the particle
 
+    gbest = gbest_ref[1]
+
     # gpu_particles = convert(MArray, gpu_particles)
 
     @inbounds particle = gpu_particles[i]
     ## Update velocity
 
-    updated_velocity = w * particle.velocity +
+    updated_velocity = w .* particle.velocity .+
                        c1 .* rand(typeof(particle.velocity)) .* (particle.best_position -
-                        particle.position) +
-                       c2 * rand(typeof(particle.velocity)) .*
+                        particle.position) .+
+                       c2 .* rand(typeof(particle.velocity)) .*
                        (gbest.position - particle.position)
 
     @set! particle.velocity = updated_velocity
@@ -97,24 +90,20 @@ function update_particle_states!(prob, gpu_particles, gbest, w; c1 = 1.4962f0,
         @set! particle.best_cost = particle.cost
     end
 
-    # sync_threads();
     if particle.best_cost < gbest.cost
         @set! gbest.position = particle.best_position
         @set! gbest.cost = particle.best_cost
     end
 
-    gpu_particles[i] = particle
+    @inbounds gpu_particles[i] = particle
+
+    gbest_ref[1] = gbest
 
     # gpu_particles = convert(SArray, gpu_particles)
     return nothing
 end
 
-n_particles = 10_000
-gbest, particles = init_particles(prob, n_particles)
-
-gpu_particles = CuArray(particles)
-
-function pso_solve_gpu(prob,
+function pso_solve_gpu!(prob,
     gbest,
     gpu_particles;
     max_iters = 100,
@@ -124,7 +113,9 @@ function pso_solve_gpu(prob,
 
     ## Initialize stuff
 
-    kernel = @cuda launch=false update_particle_states!(prob, gpu_particles, gbest, w)
+    gbest_ref = CuArray([gbest])
+
+    kernel = @cuda launch=false update_particle_states!(prob, gpu_particles, gbest_ref, w)
 
     if debug
         @show CUDA.registers(kernel)
@@ -132,27 +123,40 @@ function pso_solve_gpu(prob,
     end
 
     config = launch_configuration(kernel.fun)
+
+    if debug
+        @show config.threads
+        @show config.blocks
+    end
+
     threads = min(length(gpu_particles), config.threads)
 
     blocks = max(cld(length(gpu_particles), threads), config.blocks)
     threads = cld(length(gpu_particles), blocks)
 
+    if debug
+        @show threads
+        @show blocks
+    end
+
     for i in 1:max_iters
         ## Invoke GPU Kernel here
-        kernel(prob, gpu_particles, gbest, w)
+        kernel(prob, gpu_particles, gbest_ref, w; threads, blocks)
         w = w * wdamp
     end
 
-    return gbest
+    return gbest_ref
 end
 
-function update_particle_states_cpu!(prob, particles, gbest, w; c1 = 1.4962f0,
+function update_particle_states_cpu!(prob, particles, gbest_ref, w; c1 = 1.4962f0,
     c2 = 1.4962f0)
     # i = 1
 
     ## Access the particle
 
     # gpu_particles = convert(MArray, gpu_particles)
+
+    gbest = gbest_ref[]
 
     for i in eachindex(particles)
         @inbounds particle = particles[i]
@@ -181,7 +185,6 @@ function update_particle_states_cpu!(prob, particles, gbest, w; c1 = 1.4962f0,
             @set! particle.best_cost = particle.cost
         end
 
-        # sync_threads();
         if particle.best_cost < gbest.cost
             @set! gbest.position = particle.best_position
             @set! gbest.cost = particle.best_cost
@@ -189,47 +192,23 @@ function update_particle_states_cpu!(prob, particles, gbest, w; c1 = 1.4962f0,
 
         particles[i] = particle
     end
+    gbest_ref[] = gbest
     return nothing
 end
 
-function pso_solve_cpu(prob,
+function pso_solve_cpu!(prob,
     gbest,
     cpu_particles;
     max_iters = 100,
     w = 0.7298f0,
     wdamp = 1.0f0,
     debug = false)
+    sol_ref = Ref(gbest)
     for i in 1:max_iters
         ## Invoke GPU Kernel here
-        update_particle_states_cpu!(prob, cpu_particles, gbest, w)
+        update_particle_states_cpu!(prob, cpu_particles, sol_ref, w)
         w = w * wdamp
     end
 
-    return gbest
+    return sol_ref[]
 end
-
-using BenchmarkTools
-@benchmark pso_solve_cpu($prob, $gbest, $particles)
-
-@benchmark pso_solve_gpu($prob, $gbest, $gpu_particles)
-
-## Solving the rosenbrock problem
-
-lb = @SArray Float32[-1.0, -1.0]
-
-ub = @SArray Float32[1.0, 1.0]
-
-rosenbrock(x, p) = (p[1] - x[1])^2 + p[2] * (x[2] - x[1]^2)^2
-x0 = @SArray zeros(Float32, 2)
-p = @SArray Float32[2.0, 100.0]
-
-prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub)
-
-n_particles = 10_000
-gbest, particles = init_particles(prob, n_particles)
-
-gpu_particles = cu(particles)
-
-t1 = @elapsed pso_solve_cpu(prob, gbest, particles)
-
-t2 = @elapsed pso_solve_gpu(prob, gbest, gpu_particles)
