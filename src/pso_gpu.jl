@@ -61,7 +61,7 @@ function update_particle_states!(prob, gpu_particles, gbest_ref, w; c1 = 1.4962f
 
     ## Access the particle
 
-    gbest = gbest_ref[1]
+    @inbounds gbest = gbest_ref[1]
 
     # gpu_particles = convert(MArray, gpu_particles)
 
@@ -97,7 +97,7 @@ function update_particle_states!(prob, gpu_particles, gbest_ref, w; c1 = 1.4962f
 
     @inbounds gpu_particles[i] = particle
 
-    gbest_ref[1] = gbest
+    @inbounds gbest_ref[1] = gbest
 
     # gpu_particles = convert(SArray, gpu_particles)
     return nothing
