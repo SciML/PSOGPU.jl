@@ -1,6 +1,7 @@
 using PSOGPU
-using Test
+using Test, StaticArrays, LinearAlgebra
 
-@testset "PSOGPU.jl" begin
-    # Write your tests here.
+@testset "Rosenbrock test dimension = $(n)" for n in 2:4
+    global N = n
+    include("./regression.jl")
 end
