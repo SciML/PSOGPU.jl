@@ -1,34 +1,6 @@
 # https://stackoverflow.com/questions/65342388/why-my-code-in-julia-is-getting-slower-for-higher-iteration
 
-function uniform(dim::Int, lb::Array{Float64, 1}, ub::Array{Float64, 1})
-    arr = rand(Float64, dim)
-    @inbounds for i in 1:dim
-        arr[i] = arr[i] * (ub[i] - lb[i]) + lb[i]
-    end
-    return arr
-end
-
-mutable struct Problem
-    cost_func::Any
-    dim::Int
-    lb::Array{Float64, 1}
-    ub::Array{Float64, 1}
-end
-
-mutable struct Particle
-    position::Array{Float64, 1}
-    velocity::Array{Float64, 1}
-    cost::Float64
-    best_position::Array{Float64, 1}
-    best_cost::Float64
-end
-
-mutable struct Gbest
-    position::Array{Float64, 1}
-    cost::Float64
-end
-
-function PSO(problem,
+function PSO(problem::OptimizationProblem,
     data_dict;
     max_iter = 100,
     population = 100,
@@ -37,10 +9,11 @@ function PSO(problem,
     w = 0.7298,
     wdamp = 1.0,
     verbose = false)
-    dim = problem.dim
-    lb = problem.lb
-    ub = problem.ub
-    cost_func = problem.cost_func
+    dim = length(prob.u0)
+    lb = prob.lb
+    ub = prob.ub
+    cost_func = prob.f
+    p = prob.p
 
     gbest, particles = initialize_particles(problem, population, data_dict)
 
@@ -86,16 +59,16 @@ function initialize_particles(problem, population, data_dict)
     cost_func = problem.cost_func
 
     gbest_position = uniform(dim, lb, ub)
-    gbest = Gbest(gbest_position, cost_func(gbest_position, data_dict))
+    gbest = PSOGbest(gbest_position, cost_func(gbest_position, data_dict))
 
-    particles = Particle[]
+    particles = PSOParticle[]
     for i in 1:population
         position = uniform(dim, lb, ub)
         velocity = zeros(dim)
         cost = cost_func(position, data_dict)
         best_position = copy(position)
         best_cost = copy(cost)
-        push!(particles, Particle(position, velocity, cost, best_position, best_cost))
+        push!(particles, PSOParticle(position, velocity, cost, best_position, best_cost))
 
         if best_cost < gbest.cost
             gbest.position = copy(best_position)
@@ -103,4 +76,70 @@ function initialize_particles(problem, population, data_dict)
         end
     end
     return gbest, particles
+end
+
+
+function update_particle_states_cpu!(prob, particles, gbest_ref, w; c1 = 1.4962f0,
+    c2 = 1.4962f0)
+    # i = 1
+
+    ## Access the particle
+
+    # gpu_particles = convert(MArray, gpu_particles)
+
+    gbest = gbest_ref[]
+
+    for i in eachindex(particles)
+        @inbounds particle = particles[i]
+        ## Update velocity
+
+        updated_velocity = w * particle.velocity +
+                           c1 .* rand(typeof(particle.velocity)) .*
+                           (particle.best_position -
+                            particle.position) +
+                           c2 * rand(typeof(particle.velocity)) .*
+                           (gbest.position - particle.position)
+
+        @set! particle.velocity = updated_velocity
+
+        @set! particle.position = particle.position + particle.velocity
+
+        update_pos = max(particle.position, prob.lb)
+        update_pos = min(update_pos, prob.ub)
+        @set! particle.position = update_pos
+        # @set! particle.position = min(particle.position, ub)
+
+        @set! particle.cost = prob.f(particle.position, prob.p)
+
+        if particle.cost < particle.best_cost
+            @set! particle.best_position = particle.position
+            @set! particle.best_cost = particle.cost
+        end
+
+        if particle.best_cost < gbest.cost
+            @set! gbest.position = particle.best_position
+            @set! gbest.cost = particle.best_cost
+        end
+
+        particles[i] = particle
+    end
+    gbest_ref[] = gbest
+    return nothing
+end
+
+function pso_solve_cpu!(prob,
+    gbest,
+    cpu_particles;
+    max_iters = 100,
+    w = 0.7298f0,
+    wdamp = 1.0f0,
+    debug = false)
+    sol_ref = Ref(gbest)
+    for i in 1:max_iters
+        ## Invoke GPU Kernel here
+        update_particle_states_cpu!(prob, cpu_particles, sol_ref, w)
+        w = w * wdamp
+    end
+
+    return sol_ref[]
 end
