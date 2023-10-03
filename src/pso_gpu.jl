@@ -1,7 +1,3 @@
-## Testing compatibility of the function prob
-
-## Use lb and ub either as StaticArray or pass them separately as CuArrays
-## Passing as CuArrays makes more sense, or maybe SArray? The based on no. of dimension
 struct PSOParticle{T1, T2 <: eltype(T1)}
     position::T1
     velocity::T1
@@ -129,19 +125,9 @@ function pso_solve_gpu!(prob,
         @show config.blocks
     end
 
-    threads = min(length(gpu_particles), config.threads)
-
-    blocks = max(cld(length(gpu_particles), threads), config.blocks)
-    threads = cld(length(gpu_particles), blocks)
-
-    if debug
-        @show threads
-        @show blocks
-    end
-
     for i in 1:max_iters
         ## Invoke GPU Kernel here
-        kernel(prob, gpu_particles, gbest_ref, w; threads, blocks)
+        kernel(prob, gpu_particles, gbest_ref, w)
         w = w * wdamp
     end
 
