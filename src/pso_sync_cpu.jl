@@ -1,4 +1,4 @@
-function update_particle_states!(prob, gpu_particles, gbest_ref, w; c1 = 1.4962f0,
+function update_particles(prob, gpu_particles, gbest_ref, w; c1 = 1.4962f0,
     c2 = 1.4962f0)
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(gpu_particles) && return
@@ -28,56 +28,16 @@ function update_particle_states!(prob, gpu_particles, gbest_ref, w; c1 = 1.4962f
     update_pos = min(update_pos, prob.ub)
     @set! particle.position = update_pos
     # @set! particle.position = min(particle.position, ub)
-
-    @set! particle.cost = prob.f(particle.position, prob.p)
-
     if particle.cost < particle.best_cost
         @set! particle.best_position = particle.position
         @set! particle.best_cost = particle.cost
     end
 
-    if particle.best_cost < gbest.cost
-        @set! gbest.position = particle.best_position
-        @set! gbest.cost = particle.best_cost
-    end
-
     @inbounds gpu_particles[i] = particle
 
-    @inbounds gbest_ref[1] = gbest
-
-    # gpu_particles = convert(SArray, gpu_particles)
     return nothing
 end
 
-function pso_solve_gpu!(prob,
-    gbest,
-    gpu_particles;
-    maxiters = 100,
-    w = 0.7298f0,
-    wdamp = 1.0f0,
-    debug = false)
+gbest = minimum(gpu_particles)
 
-    ## Initialize stuff
-
-    kernel = @cuda launch=false update_particle_states!(prob, gpu_particles, gbest, w)
-
-    if debug
-        @show CUDA.registers(kernel)
-        @show CUDA.memory(kernel)
-    end
-
-    config = launch_configuration(kernel.fun)
-
-    if debug
-        @show config.threads
-        @show config.blocks
-    end
-
-    for i in 1:maxiters
-        ## Invoke GPU Kernel here
-        kernel(prob, gpu_particles, gbest, w)
-        w = w * wdamp
-    end
-
-    return Array(gbest)[1]
-end
+@set! particle.cost = prob.f(particle.position, prob.p)

@@ -1,7 +1,7 @@
 function update_particle_states_async!(prob,
     gpu_particles,
     gbest_ref,
-    w, wdamp, max_iters;
+    w, wdamp, maxiters;
     c1 = 1.4962f0,
     c2 = 1.4962f0)
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -14,7 +14,7 @@ function update_particle_states_async!(prob,
     @inbounds particle = gpu_particles[i]
 
     ## Run all generations
-    for i in 1:max_iters
+    for i in 1:maxiters
         updated_velocity = w .* particle.velocity .+
                            c1 .* rand(typeof(particle.velocity)) .*
                            (particle.best_position -
@@ -55,19 +55,17 @@ end
 function pso_solve_async_gpu!(prob,
     gbest,
     gpu_particles;
-    max_iters = 100,
+    maxiters = 100,
     w = 0.7298f0,
     wdamp = 1.0f0,
     debug = false)
 
     ## Initialize stuff
 
-    gbest_ref = CuArray([gbest])
-
     kernel = @cuda launch=false update_particle_states_async!(prob,
         gpu_particles,
-        gbest_ref,
-        w, wdamp, max_iters)
+        gbest,
+        w, wdamp, maxiters)
 
     if debug
         @show CUDA.registers(kernel)
@@ -81,7 +79,7 @@ function pso_solve_async_gpu!(prob,
         @show config.blocks
     end
 
-    kernel(prob, gpu_particles, gbest_ref, w, wdamp, max_iters)
+    kernel(prob, gpu_particles, gbest, w, wdamp, maxiters)
 
     best_particle = minimum(gpu_particles)
     return PSOGBest(best_particle.best_position, best_particle.best_cost)

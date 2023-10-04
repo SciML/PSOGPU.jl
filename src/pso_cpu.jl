@@ -1,51 +1,61 @@
-# https://stackoverflow.com/questions/65342388/why-my-code-in-julia-is-getting-slower-for-higher-iteration
+# Based on: https://stackoverflow.com/questions/65342388/why-my-code-in-julia-is-getting-slower-for-higher-iteration
 
-function uniform(dim::Int, lb::Array{Float64, 1}, ub::Array{Float64, 1})
-    arr = rand(Float64, dim)
-    @inbounds for i in 1:dim
-        arr[i] = arr[i] * (ub[i] - lb[i]) + lb[i]
+mutable struct Particle{T}
+    position::Array{T, 1}
+    velocity::Array{T, 1}
+    cost::T
+    best_position::Array{T, 1}
+    best_cost::T
+end
+mutable struct Gbest{T}
+    position::Array{T, 1}
+    cost::T
+end
+
+function _init_particles(prob, population)
+    dim = length(prob.u0)
+    lb = prob.lb
+    ub = prob.ub
+    cost_func = prob.f
+
+    gbest_position = uniform(dim, lb, ub)
+    gbest = Gbest(gbest_position, cost_func(gbest_position, prob.p))
+
+    particles = Particle[]
+    for i in 1:population
+        position = uniform(dim, lb, ub)
+        velocity = zeros(eltype(position), dim)
+        cost = cost_func(position, prob.p)
+        best_position = copy(position)
+        best_cost = copy(cost)
+        push!(particles, Particle(position, velocity, cost, best_position, best_cost))
+
+        if best_cost < gbest.cost
+            gbest.position = copy(best_position)
+            gbest.cost = copy(best_cost)
+        end
     end
-    return arr
+    return gbest, particles
 end
 
-mutable struct Problem
-    cost_func::Any
-    dim::Int
-    lb::Array{Float64, 1}
-    ub::Array{Float64, 1}
-end
-
-mutable struct Particle
-    position::Array{Float64, 1}
-    velocity::Array{Float64, 1}
-    cost::Float64
-    best_position::Array{Float64, 1}
-    best_cost::Float64
-end
-
-mutable struct Gbest
-    position::Array{Float64, 1}
-    cost::Float64
-end
-
-function PSO(problem,
-    data_dict;
-    max_iter = 100,
+function PSO(prob::OptimizationProblem;
+    maxiters = 100,
     population = 100,
     c1 = 1.4962,
     c2 = 1.4962,
     w = 0.7298,
     wdamp = 1.0,
     verbose = false)
-    dim = problem.dim
-    lb = problem.lb
-    ub = problem.ub
-    cost_func = problem.cost_func
+    dim = length(prob.u0)
+    lb = prob.lb
+    ub = prob.ub
+    cost_func = prob.f
+    p = prob.p
 
-    gbest, particles = initialize_particles(problem, population, data_dict)
+    gbest, particles = _init_particles(prob, population)
 
     # main loop
-    for iter in 1:max_iter
+    for iter in 1:maxiters
         Threads.@threads for i in 1:population
             particles[i].velocity .= w .* particles[i].velocity .+
                                      c1 .* rand(dim) .* (particles[i].best_position .-
@@ -57,7 +67,7 @@ function PSO(problem,
             particles[i].position .= max.(particles[i].position, lb)
             particles[i].position .= min.(particles[i].position, ub)
 
-            particles[i].cost = cost_func(particles[i].position, data_dict)
+            particles[i].cost = cost_func(particles[i].position, prob.p)
 
             if particles[i].cost < particles[i].best_cost
                 particles[i].best_position = copy(particles[i].position)
@@ -76,31 +86,70 @@ function PSO(problem,
             println()
         end
     end
-    gbest, particles
+    gbest
 end
 
-function initialize_particles(problem, population, data_dict)
-    dim = problem.dim
-    lb = problem.lb
-    ub = problem.ub
-    cost_func = problem.cost_func
+function update_particle_states_cpu!(prob, particles, gbest_ref, w; c1 = 1.4962f0,
+    c2 = 1.4962f0)
+    # i = 1
 
-    gbest_position = uniform(dim, lb, ub)
-    gbest = Gbest(gbest_position, cost_func(gbest_position, data_dict))
+    ## Access the particle
 
-    particles = Particle[]
-    for i in 1:population
-        position = uniform(dim, lb, ub)
-        velocity = zeros(dim)
-        cost = cost_func(position, data_dict)
-        best_position = copy(position)
-        best_cost = copy(cost)
-        push!(particles, Particle(position, velocity, cost, best_position, best_cost))
+    # gpu_particles = convert(MArray, gpu_particles)
 
-        if best_cost < gbest.cost
-            gbest.position = copy(best_position)
-            gbest.cost = copy(best_cost)
+    gbest = gbest_ref[]
+
+    for i in eachindex(particles)
+        @inbounds particle = particles[i]
+        ## Update velocity
+
+        updated_velocity = w * particle.velocity +
+                           c1 .* rand(typeof(particle.velocity)) .*
+                           (particle.best_position -
+                            particle.position) +
+                           c2 * rand(typeof(particle.velocity)) .*
+                           (gbest.position - particle.position)
+
+        @set! particle.velocity = updated_velocity
+
+        @set! particle.position = particle.position + particle.velocity
+
+        update_pos = max(particle.position, prob.lb)
+        update_pos = min(update_pos, prob.ub)
+        @set! particle.position = update_pos
+        # @set! particle.position = min(particle.position, ub)
+
+        @set! particle.cost = prob.f(particle.position, prob.p)
+
+        if particle.cost < particle.best_cost
+            @set! particle.best_position = particle.position
+            @set! particle.best_cost = particle.cost
         end
+
+        if particle.best_cost < gbest.cost
+            @set! gbest.position = particle.best_position
+            @set! gbest.cost = particle.best_cost
+        end
+
+        particles[i] = particle
     end
-    return gbest, particles
+    gbest_ref[] = gbest
+    return nothing
+end
+
+function pso_solve_cpu!(prob,
+    gbest,
+    cpu_particles;
+    maxiters = 100,
+    w = 0.7298f0,
+    wdamp = 1.0f0,
+    debug = false)
+    sol_ref = Ref(gbest)
+    for i in 1:maxiters
+        ## Invoke GPU Kernel here
+        update_particle_states_cpu!(prob, cpu_particles, sol_ref, w)
+        w = w * wdamp
+    end
+
+    return sol_ref[]
 end
