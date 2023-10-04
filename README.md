@@ -1,8 +1,7 @@
 # PSOGPU
 
 [![Build Status](https://github.com/utkarsh530/PSOGPU.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/utkarsh530/PSOGPU.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Coverage](https://codecov.io/gh/utkarsh530/PSOGPU.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/utkarsh530/PSOGPU.jl)
-
+[![codecov](https://codecov.io/gh/utkarsh530/PSOGPU.jl/graph/badge.svg?token=H5U5UAIRXX)](https://codecov.io/gh/utkarsh530/PSOGPU.jl)  
 Accelerating convex/non-convex optimization with GPUs using Particle-Swarm based methods
 
 Supports generic Julia's SciML interface
