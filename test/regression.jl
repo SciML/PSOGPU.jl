@@ -13,7 +13,7 @@ p = @SArray Float32[2.0, 100.0]
 
 prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub)
 
-n_particles = 100
+n_particles = 1000
 
 sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = true), maxiters = 500)
 
