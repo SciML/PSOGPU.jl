@@ -15,8 +15,10 @@ prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub)
 
 n_particles = 100
 
-opt = ParallelPSO(n_particles)
+sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = true), maxiters = 500)
 
-sol_cpu = solve(prob, opt, maxiters = 500)
+@test norm(sol.u - ub) < 3e-2
 
-@test norm(sol_cpu.position - ub) < 3e-2
+sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = false), maxiters = 500)
+
+@test norm(sol.u - ub) < 3e-2

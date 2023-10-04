@@ -62,11 +62,9 @@ function pso_solve_async_gpu!(prob,
 
     ## Initialize stuff
 
-    gbest_ref = CuArray([gbest])
-
     kernel = @cuda launch=false update_particle_states_async!(prob,
         gpu_particles,
-        gbest_ref,
+        gbest,
         w, wdamp, maxiters)
 
     if debug
@@ -81,7 +79,7 @@ function pso_solve_async_gpu!(prob,
         @show config.blocks
     end
 
-    kernel(prob, gpu_particles, gbest_ref, w, wdamp, maxiters)
+    kernel(prob, gpu_particles, gbest, w, wdamp, maxiters)
 
     best_particle = minimum(gpu_particles)
     return PSOGBest(best_particle.best_position, best_particle.best_cost)
