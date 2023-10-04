@@ -2,7 +2,6 @@ module PSOGPU
 
 using SciMLBase, StaticArrays, Setfield, CUDA
 
-include("./algorithms.jl")
 include("./pso_cpu.jl")
 include("./pso_gpu.jl")
 include("./pso_async_gpu.jl")
@@ -46,18 +45,26 @@ struct PSOGBest{T1, T2 <: eltype(T1)}
     cost::T2
 end
 
-mutable struct Problem
-    cost_func::Any
-    dim::Int
-    lb::Array{Float64, 1}
-    ub::Array{Float64, 1}
+struct ParallelPSO
+    num_particles::Int
+    async::Bool
+    gpu::Bool
+    threaded::Bool
 end
 
+ParallelPSO(num_particles::Int;
+    async = false,
+    gpu = false, threaded = false) = ParallelPSO(num_particles, async, gpu, threaded)
+
+struct GPU end
+struct CPU end
+
 function SciMLBase.__solve(prob::OptimizationProblem,
-    opt::ParallelPSOCPU,
+    opt::ParallelPSO,
     args...;
     kwargs...)
-    if typeof(opt.lb) <: AbstractFloat
+
+    if typeof(opt.lb) <: AbstractFloat 
         lb = [opt.lb for i in 1:length(prob.u0)]
         ub = [opt.ub for i in 1:length(prob.u0)]
     else
@@ -65,14 +72,26 @@ function SciMLBase.__solve(prob::OptimizationProblem,
         ub = opt.ub
     end
 
-    problem = Problem(prob.f, length(prob.u0), lb, ub)
-
-    max_iter = 101
-
-    gbest, = PSO(problem, prob.p, max_iter = max_iter, population = opt.num_particles)
+    if !(opt.gpu)
+        if opt.threaded
+            gbest, = PSO(problem, prob.p, max_iter = max_iter, population = opt.num_particles)
+        else
+            gbest, cpu_particles = initialize_particles(prob, ::CPU, opt.num_particles, prob.p)    
+            pso_solve_cpu!(prob, gbest, cpu_particles; kwargs...)
+        end
+    else
+        if opt.async
+            gbest, gpu_particles = PSOGPU.init_particles(prob, ::GPU, opt.num_particles, prob.p)
+            pso_solve_async_gpu!(prob, gbest, gpu_particles; kwargs...)
+        else
+            gbest, gpu_particles = PSOGPU.init_particles(prob, ::GPU, opt.num_particles, prob.p)
+            pso_solve_gpu!(prob, gbest, gpu_particles; kwargs...)
+        end
+    end
 
     SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
         gbest.position, gbest.cost)
 end
-export ParallelPSOCPU, OptimizationProblem, solve
+
+export ParallelPSO, OptimizationProblem, solve
 end

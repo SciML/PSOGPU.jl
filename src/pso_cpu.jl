@@ -52,7 +52,7 @@ function PSO(problem::OptimizationProblem,
     gbest, particles
 end
 
-function initialize_particles(problem, population, data_dict)
+function initialize_particles(problem, ::CPU, population, data_dict)
     dim = problem.dim
     lb = problem.lb
     ub = problem.ub
@@ -130,15 +130,29 @@ end
 function pso_solve_cpu!(prob,
     gbest,
     cpu_particles;
-    max_iters = 100,
+    maxiters = 100,
     w = 0.7298f0,
     wdamp = 1.0f0,
-    debug = false)
+    debug = false,
+    threaded = false)
+
     sol_ref = Ref(gbest)
-    for i in 1:max_iters
-        ## Invoke GPU Kernel here
-        update_particle_states_cpu!(prob, cpu_particles, sol_ref, w)
-        w = w * wdamp
+    if threaded
+        PSO(prob,
+        data_dict;
+        max_iter = 100,
+        population = 100,
+        c1 = 1.4962,
+        c2 = 1.4962,
+        w = 0.7298,
+        wdamp = 1.0,
+        verbose = false)
+    else
+        for i in 1:maxiters
+            ## Invoke GPU Kernel here
+            update_particle_states_cpu!(prob, cpu_particles, sol_ref, w)
+            w = w * wdamp
+        end
     end
 
     return sol_ref[]

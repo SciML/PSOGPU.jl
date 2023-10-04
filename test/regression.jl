@@ -15,8 +15,8 @@ prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub)
 
 n_particles = 100
 
-gbest, particles = PSOGPU.init_particles(prob, n_particles)
+opt = ParallelPSO(n_particles)
 
-sol_cpu = PSOGPU.pso_solve_cpu!(prob, gbest, particles; max_iters = 500)
+sol_cpu = solve(prob, opt, maxiters = 500)
 
 @test norm(sol_cpu.position - ub) < 3e-2

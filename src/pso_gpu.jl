@@ -1,5 +1,4 @@
-## Testing compatibility of the function prob
-function init_particles(prob, n_particles)
+function init_particles(prob, ::GPU, n_particles, data_dict)
     dim = length(prob.u0)
     lb = prob.lb
     ub = prob.ub
@@ -82,7 +81,7 @@ end
 function pso_solve_gpu!(prob,
     gbest,
     gpu_particles;
-    max_iters = 100,
+    maxiters = 100,
     w = 0.7298f0,
     wdamp = 1.0f0,
     debug = false)
@@ -105,7 +104,7 @@ function pso_solve_gpu!(prob,
         @show config.blocks
     end
 
-    for i in 1:max_iters
+    for i in 1:maxiters
         ## Invoke GPU Kernel here
         kernel(prob, gpu_particles, gbest_ref, w)
         w = w * wdamp
