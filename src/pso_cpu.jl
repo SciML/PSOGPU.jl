@@ -18,7 +18,18 @@ function _init_particles(prob, population)
     ub = prob.ub
     cost_func = prob.f
 
-    gbest_position = uniform(dim, lb, ub)
+    if lb === nothing
+        gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
+        for i in 1:dim
+            if abs(prob.u0[i]) > 0
+                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+            else
+                gbest_position[i] = rand(eltype(prob.u0))
+            end
+        end
+    else
+        gbest_position = uniform(dim, lb, ub)
+    end
     gbest = Gbest(gbest_position, cost_func(gbest_position, prob.p))
 
     particles = Particle[]
