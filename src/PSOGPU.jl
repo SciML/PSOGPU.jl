@@ -31,7 +31,7 @@ function ParallelPSO(num_particles::Int;
 end
 
 SciMLBase.allowsbounds(::ParallelPSO) = true
-SciMLBase.requiresbounds(::ParallelPSO) = true
+# SciMLBase.requiresbounds(::ParallelPSO) = true
 
 struct GPU end
 struct CPU end
