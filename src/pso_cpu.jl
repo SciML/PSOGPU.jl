@@ -18,12 +18,34 @@ function _init_particles(prob, population)
     ub = prob.ub
     cost_func = prob.f
 
-    gbest_position = uniform(dim, lb, ub)
+    if lb === nothing || (all(isinf, lb) && all(isinf, ub))
+        gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
+        for i in 1:dim
+            if abs(prob.u0[i]) > 0
+                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+            else
+                gbest_position[i] = rand(eltype(prob.u0))
+            end
+        end
+    else
+        gbest_position = uniform(dim, lb, ub)
+    end
     gbest = Gbest(gbest_position, cost_func(gbest_position, prob.p))
 
     particles = Particle[]
     for i in 1:population
-        position = uniform(dim, lb, ub)
+        if lb === nothing || (all(isinf, lb) && all(isinf, ub))
+            position = Array{eltype(prob.u0), 1}(undef, dim)
+            for i in 1:dim
+                if abs(prob.u0[i]) > 0
+                    position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+                else
+                    position[i] = rand(eltype(prob.u0))
+                end
+            end
+        else
+            position = uniform(dim, lb, ub)
+        end
         velocity = zeros(eltype(position), dim)
         cost = cost_func(position, prob.p)
         best_position = copy(position)
@@ -47,8 +69,8 @@ function PSO(prob::OptimizationProblem;
     wdamp = 1.0,
     verbose = false)
     dim = length(prob.u0)
-    lb = prob.lb
-    ub = prob.ub
+    lb = prob.lb === nothing ? fill(eltype(prob.u0)(-Inf), dim) : prob.lb
+    ub = prob.ub === nothing ? fill(eltype(prob.u0)(Inf), dim) : prob.ub
     cost_func = prob.f
     p = prob.p
 
@@ -89,7 +111,7 @@ function PSO(prob::OptimizationProblem;
     gbest
 end
 
-function update_particle_states_cpu!(prob, particles, gbest_ref, w; c1 = 1.4962f0,
+function update_particle_states_cpu!(prob, particles, gbest_ref, w, lb , ub; c1 = 1.4962f0,
     c2 = 1.4962f0)
     # i = 1
 
@@ -114,8 +136,8 @@ function update_particle_states_cpu!(prob, particles, gbest_ref, w; c1 = 1.4962f
 
         @set! particle.position = particle.position + particle.velocity
 
-        update_pos = max(particle.position, prob.lb)
-        update_pos = min(update_pos, prob.ub)
+        update_pos = max(particle.position, lb)
+        update_pos = min(update_pos, ub)
         @set! particle.position = update_pos
         # @set! particle.position = min(particle.position, ub)
 
@@ -145,9 +167,11 @@ function pso_solve_cpu!(prob,
     wdamp = 1.0f0,
     debug = false)
     sol_ref = Ref(gbest)
+    lb = prob.lb === nothing ? fill(eltype(prob.u0)(-Inf), length(prob.u0)) : prob.lb
+    ub = prob.ub === nothing ? fill(eltype(prob.u0)(Inf), length(prob.u0)) : prob.ub
     for i in 1:maxiters
         ## Invoke GPU Kernel here
-        update_particle_states_cpu!(prob, cpu_particles, sol_ref, w)
+        update_particle_states_cpu!(prob, cpu_particles, sol_ref, w, lb, ub)
         w = w * wdamp
     end
 

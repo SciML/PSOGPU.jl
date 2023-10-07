@@ -13,12 +13,35 @@ function init_particles(prob, n_particles)
     cost_func = prob.f
     p = prob.p
 
-    gbest_position = uniform(dim, lb, ub)
+    if lb === nothing || (all(isinf, lb) && all(isinf, ub))
+        gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
+        for i in 1:dim
+            if abs(prob.u0[i]) > 0
+                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+            else
+                gbest_position[i] = rand(eltype(prob.u0))
+            end
+        end
+    else
+        gbest_position = uniform(dim, lb, ub)
+    end
+
     gbest_position = SVector{length(gbest_position), eltype(gbest_position)}(gbest_position)
     gbest_cost = cost_func(gbest_position, p)
     particles = PSOParticle[]
     for i in 1:n_particles
-        position = uniform(dim, lb, ub)
+        if lb === nothing || (all(isinf, lb) && all(isinf, ub))
+            position = Array{eltype(prob.u0), 1}(undef, dim)
+            for i in 1:dim
+                if abs(prob.u0[i]) > 0
+                    position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+                else
+                    position[i] = rand(eltype(prob.u0))
+                end
+            end
+        else
+            position = uniform(dim, lb, ub)
+        end
         position = SVector{length(position), eltype(position)}(position)
         velocity = @SArray zeros(eltype(position), dim)
         cost = cost_func(position, p)
@@ -41,12 +64,35 @@ function init_particles(prob, population, ::CPU)
     ub = prob.ub
     cost_func = prob.f
 
-    gbest_position = uniform(dim, lb, ub)
+    if lb === nothing || (all(isinf, lb) && all(isinf, ub))
+        gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
+        for i in 1:dim
+            if abs(prob.u0[i]) > 0
+                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+            else
+                gbest_position[i] = rand(eltype(prob.u0))
+            end
+        end
+    else
+        gbest_position = uniform(dim, lb, ub)
+    end
+
     gbest = Gbest(gbest_position, cost_func(gbest_position, data_dict))
 
     particles = Particle[]
     for i in 1:population
-        position = uniform(dim, lb, ub)
+        if lb === nothing || (all(isinf, lb) && all(isinf, ub))
+            position = Array{eltype(prob.u0), 1}(undef, dim)
+            for i in 1:dim
+                if abs(prob.u0[i]) > 0
+                    position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+                else
+                    position[i] = rand(eltype(prob.u0))
+                end
+            end
+        else
+            position = uniform(dim, lb, ub)
+        end
         velocity = zeros(dim)
         cost = cost_func(position, data_dict)
         best_position = copy(position)
