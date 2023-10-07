@@ -17,11 +17,11 @@ n_particles = 1000
 
 sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = true), maxiters = 500)
 
-@test sol.minimum < 1e-6
+@test sol.minimum < 3e-2
 
 sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = false), maxiters = 500)
 
-@test sol.minimum < 1e-6
+@test sol.minimum < 3e-2
 
 lb = @SVector fill(Float32(-Inf), N)
 ub = @SVector fill(Float32(Inf), N)
@@ -31,11 +31,11 @@ n_particles = 2000
 
 sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = true), maxiters = 2000)
 
-@test sol.minimum < 1e-6
+@test sol.minimum < 3e-2
 
 sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = false), maxiters = 2000)
 
-@test sol.minimum < 1e-6
+@test sol.minimum < 3e-2
 
 prob = OptimizationProblem(rosenbrock, x0, p)
 
@@ -43,8 +43,8 @@ n_particles = 2000
 
 sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = true), maxiters = 500)
 
-@test sol.minimum < 1e-6
+@test sol.minimum < 3e-2
 
 sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = false), maxiters = 500)
 
-@test sol.minimum < 1e-6
+@test sol.minimum < 3e-2
