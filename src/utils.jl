@@ -17,7 +17,7 @@ function init_particles(prob, n_particles)
         gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
         for i in 1:dim
             if abs(prob.u0[i]) > 0
-                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
             else
                 gbest_position[i] = rand(eltype(prob.u0))
             end
@@ -34,7 +34,7 @@ function init_particles(prob, n_particles)
             position = Array{eltype(prob.u0), 1}(undef, dim)
             for i in 1:dim
                 if abs(prob.u0[i]) > 0
-                    position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+                    position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
                 else
                     position[i] = rand(eltype(prob.u0))
                 end
@@ -68,7 +68,7 @@ function init_particles(prob, population, ::CPU)
         gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
         for i in 1:dim
             if abs(prob.u0[i]) > 0
-                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
             else
                 gbest_position[i] = rand(eltype(prob.u0))
             end
@@ -85,7 +85,7 @@ function init_particles(prob, population, ::CPU)
             position = Array{eltype(prob.u0), 1}(undef, dim)
             for i in 1:dim
                 if abs(prob.u0[i]) > 0
-                    position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+                    position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
                 else
                     position[i] = rand(eltype(prob.u0))
                 end

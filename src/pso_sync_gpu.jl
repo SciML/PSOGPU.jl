@@ -32,15 +32,18 @@ function _update_particle_states!(prob, gpu_particles, gbest, w; c1 = 1.4962f0,
     return nothing
 end
 
-
 function calculate_loss!(prob, gpu_particles)
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(gpu_particles) && return
 
-
     @inbounds particle = gpu_particles[i]
 
     @set! particle.cost = prob.f(particle.position, prob.p)
+
+    if particle.cost < particle.best_cost
+        @set! particle.best_position = particle.position
+        @set! particle.best_cost = particle.cost
+    end
 
     @inbounds gpu_particles[i] = particle
 

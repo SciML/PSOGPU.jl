@@ -27,5 +27,3 @@ n_particles = 2000
 sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = true), maxiters = 500)
 
 @test sol.objective < 1e-4
-
-
