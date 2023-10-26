@@ -40,6 +40,7 @@ include("./pso_cpu.jl")
 include("./pso_gpu.jl")
 include("./pso_async_gpu.jl")
 include("./utils.jl")
+include("./pso_sync_gpu.jl")
 
 function SciMLBase.__solve(prob::OptimizationProblem,
     opt::ParallelPSO,
