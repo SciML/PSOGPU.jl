@@ -17,21 +17,25 @@ struct PSOGBest{T1, T2 <: eltype(T1)}
     cost::T2
 end
 
-struct ParallelPSO
+struct ParallelPSOKernel
     num_particles::Int
     async::Bool
     gpu::Bool
     threaded::Bool
 end
-
-function ParallelPSO(num_particles::Int;
-    async = false,
-    gpu = false, threaded = false)
-    ParallelPSO(num_particles, async, gpu, threaded)
+struct ParallelSyncPSO
+    num_particles::Int
 end
 
-SciMLBase.allowsbounds(::ParallelPSO) = true
-# SciMLBase.requiresbounds(::ParallelPSO) = true
+function ParallelPSOKernel(num_particles::Int;
+    async = false,
+    gpu = false, threaded = false)
+    ParallelPSOKernel(num_particles, async, gpu, threaded)
+end
+
+SciMLBase.allowsbounds(::ParallelPSOKernel) = true
+SciMLBase.allowsbounds(::ParallelSyncPSO) = true
+# SciMLBase.requiresbounds(::ParallelPSOKernel) = true
 
 struct GPU end
 struct CPU end
@@ -43,7 +47,7 @@ include("./utils.jl")
 include("./pso_sync_gpu.jl")
 
 function SciMLBase.__solve(prob::OptimizationProblem,
-    opt::ParallelPSO,
+    opt::ParallelPSOKernel,
     args...;
     kwargs...)
     if !(opt.gpu)
@@ -71,6 +75,19 @@ function SciMLBase.__solve(prob::OptimizationProblem,
         gbest.position, gbest.cost)
 end
 
+function SciMLBase.__solve(prob::OptimizationProblem,
+    opt::ParallelSyncPSO,
+    args...;
+    kwargs...)
+    init_gbest, particles = init_particles(prob, opt.num_particles)
+    gpu_particles = cu(particles)
+    init_gbest = init_gbest
+    gbest = pso_solve_sync_gpu!(prob, init_gbest, gpu_particles; kwargs...)
+
+    SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
+        gbest.position, gbest.cost)
+end
+
 using Base
 
 ## required overloads for min or max computation on particles
@@ -87,5 +104,5 @@ function Base.typemax(::Type{PSOGPU.PSOParticle{T1, T2}}) where {T1, T2}
         typemax(T2))
 end
 
-export ParallelPSO, OptimizationProblem, solve
+export ParallelPSOKernel, ParallelSyncPSO, OptimizationProblem, solve
 end

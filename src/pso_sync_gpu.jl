@@ -3,10 +3,6 @@ function _update_particle_states!(prob, gpu_particles, gbest, w; c1 = 1.4962f0,
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(gpu_particles) && return
 
-    # i = 1
-
-    ## Access the particle
-
     # gpu_particles = convert(MArray, gpu_particles)
 
     @inbounds particle = gpu_particles[i]
@@ -24,19 +20,7 @@ function _update_particle_states!(prob, gpu_particles, gbest, w; c1 = 1.4962f0,
 
     update_pos = max(particle.position, prob.lb)
     update_pos = min(update_pos, prob.ub)
-
     @set! particle.position = update_pos
-
-    @inbounds gpu_particles[i] = particle
-
-    return nothing
-end
-
-function calculate_loss!(prob, gpu_particles)
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i > length(gpu_particles) && return
-
-    @inbounds particle = gpu_particles[i]
 
     @set! particle.cost = prob.f(particle.position, prob.p)
 
@@ -48,4 +32,37 @@ function calculate_loss!(prob, gpu_particles)
     @inbounds gpu_particles[i] = particle
 
     return nothing
+end
+
+function pso_solve_sync_gpu!(prob,
+    gbest,
+    gpu_particles;
+    maxiters = 100,
+    w = 0.7298f0,
+    wdamp = 1.0f0,
+    debug = false)
+    update_particle_kernel = @cuda launch=false _update_particle_states!(prob,
+        gpu_particles,
+        gbest, w)
+
+    if debug
+        @show CUDA.registers(update_particle_kernel)
+        @show CUDA.memory(update_particle_kernel)
+    end
+
+    config = launch_configuration(update_particle_kernel.fun)
+
+    if debug
+        @show config.threads
+        @show config.blocks
+    end
+
+    for i in 1:maxiters
+        update_particle_kernel(prob, gpu_particles, gbest, w)
+        best_particle = minimum(gpu_particles)
+        gbest = PSOGBest(best_particle.position, best_particle.best_cost)
+        w = w * wdamp
+    end
+
+    return gbest
 end
