@@ -16,11 +16,15 @@ prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub)
 
 n_particles = 1000
 
-sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = true), maxiters = 500)
+sol = solve(prob,
+    ParallelPSOKernel(n_particles; gpu = false, threaded = true),
+    maxiters = 500)
 
 @test sol.objective < 1e-4
 
-sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = false), maxiters = 500)
+sol = solve(prob,
+    ParallelPSOKernel(n_particles; gpu = false, threaded = false),
+    maxiters = 500)
 
 @test sol.objective < 1e-4
 
@@ -30,11 +34,15 @@ prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub, N)
 
 n_particles = 2000
 
-sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = true), maxiters = 500)
+sol = solve(prob,
+    ParallelPSOKernel(n_particles; gpu = false, threaded = true),
+    maxiters = 500)
 
 @test sol.objective < 1e-4
 
-sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = false), maxiters = 500)
+sol = solve(prob,
+    ParallelPSOKernel(n_particles; gpu = false, threaded = false),
+    maxiters = 500)
 
 @test sol.objective < 1e-4
 
@@ -42,10 +50,14 @@ prob = OptimizationProblem(rosenbrock, x0, p)
 
 n_particles = 2000
 
-sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = true), maxiters = 500)
+sol = solve(prob,
+    ParallelPSOKernel(n_particles; gpu = false, threaded = true),
+    maxiters = 500)
 
 @test sol.objective < 1e-4
 
-sol = solve(prob, ParallelPSO(n_particles; gpu = false, threaded = false), maxiters = 500)
+sol = solve(prob,
+    ParallelPSOKernel(n_particles; gpu = false, threaded = false),
+    maxiters = 500)
 
 @test sol.objective < 1e-4

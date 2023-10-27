@@ -22,7 +22,7 @@ function _init_particles(prob, population)
         gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
         for i in 1:dim
             if abs(prob.u0[i]) > 0
-                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
             else
                 gbest_position[i] = rand(eltype(prob.u0))
             end
@@ -38,7 +38,7 @@ function _init_particles(prob, population)
             position = Array{eltype(prob.u0), 1}(undef, dim)
             for i in 1:dim
                 if abs(prob.u0[i]) > 0
-                    position[i] = prob.u0[i] + rand(eltype(prob.u0))*abs(prob.u0[i])
+                    position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
                 else
                     position[i] = rand(eltype(prob.u0))
                 end
@@ -111,7 +111,7 @@ function PSO(prob::OptimizationProblem;
     gbest
 end
 
-function update_particle_states_cpu!(prob, particles, gbest_ref, w, lb , ub; c1 = 1.4962f0,
+function update_particle_states_cpu!(prob, particles, gbest_ref, w, lb, ub; c1 = 1.4962f0,
     c2 = 1.4962f0)
     # i = 1
 
