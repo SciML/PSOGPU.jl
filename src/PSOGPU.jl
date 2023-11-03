@@ -2,6 +2,8 @@ module PSOGPU
 
 using SciMLBase, StaticArrays, Setfield, CUDA
 
+import DiffEqGPU: GPUTsit5, vectorized_asolve, make_prob_compatible
+
 ## Use lb and ub either as StaticArray or pass them separately as CuArrays
 ## Passing as CuArrays makes more sense, or maybe SArray? The based on no. of dimension
 struct PSOParticle{T1, T2 <: eltype(T1)}
@@ -45,6 +47,7 @@ include("./pso_gpu.jl")
 include("./pso_async_gpu.jl")
 include("./utils.jl")
 include("./pso_sync_gpu.jl")
+include("./ode_pso.jl")
 
 function SciMLBase.__solve(prob::OptimizationProblem,
     opt::ParallelPSOKernel,
