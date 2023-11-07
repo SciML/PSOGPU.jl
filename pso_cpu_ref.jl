@@ -33,13 +33,13 @@ mutable struct Gbest
 end
 
 function PSO(problem,
-    data_dict;
-    max_iter = 100,
-    population = 100,
-    c1 = 1.4962,
-    c2 = 1.4962,
-    w = 0.7298,
-    wdamp = 1.0)
+        data_dict;
+        max_iter = 100,
+        population = 100,
+        c1 = 1.4962,
+        c2 = 1.4962,
+        w = 0.7298,
+        wdamp = 1.0)
     dim = problem.dim
     lb = problem.lb
     ub = problem.ub
@@ -83,13 +83,13 @@ function PSO(problem,
 end
 
 function serial_PSO(problem,
-    data_dict;
-    max_iter = 100,
-    population = 100,
-    c1 = 1.4962,
-    c2 = 1.4962,
-    w = 0.7298,
-    wdamp = 1.0)
+        data_dict;
+        max_iter = 100,
+        population = 100,
+        c1 = 1.4962,
+        c2 = 1.4962,
+        w = 0.7298,
+        wdamp = 1.0)
     dim = problem.dim
     lb = problem.lb
     ub = problem.ub

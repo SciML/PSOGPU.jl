@@ -1,5 +1,5 @@
 function _update_particle_states!(lb, ub, gpu_particles, gbest, w; c1 = 1.4962f0,
-    c2 = 1.4962f0)
+        c2 = 1.4962f0)
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(gpu_particles) && return
 
@@ -43,20 +43,21 @@ function _update_particle_costs!(losses, gpu_particles)
     return nothing
 end
 
-function remake_prob_gpu(prob, gpu_particle)
-    return make_prob_compatible(remake(prob, p = gpu_particle.position))
+function default_prob_func(prob, gpu_particle)
+    return remake(prob, p = gpu_particle.position)
 end
 
 function parameter_estim_ode!(prob::ODEProblem,
-    gpu_particles,
-    gbest,
-    data,
-    lb,
-    ub;
-    ode_alg = GPUTsit5(),
-    w = 0.72980,
-    wdamp = 1.00,
-    maxiters = 100, kwargs...)
+        gpu_particles,
+        gbest,
+        data,
+        lb,
+        ub;
+        ode_alg = GPUTsit5(),
+        prob_func = default_prob_func,
+        w = 0.72980,
+        wdamp = 1.00,
+        maxiters = 100, kwargs...)
     update_states! = @cuda launch=false _update_particle_states!(lb,
         ub,
         gpu_particles,
@@ -68,7 +69,7 @@ function parameter_estim_ode!(prob::ODEProblem,
     for i in 1:maxiters
         update_states!(lb, ub, gpu_particles, gbest, w)
 
-        probs = remake_prob_gpu.(Ref(improb), gpu_particles)
+        probs = prob_func.(Ref(improb), gpu_particles)
 
         ts, us = vectorized_asolve(probs,
             prob,

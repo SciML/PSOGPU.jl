@@ -61,13 +61,13 @@ function _init_particles(prob, population)
 end
 
 function PSO(prob::OptimizationProblem;
-    maxiters = 100,
-    population = 100,
-    c1 = 1.4962,
-    c2 = 1.4962,
-    w = 0.7298,
-    wdamp = 1.0,
-    verbose = false)
+        maxiters = 100,
+        population = 100,
+        c1 = 1.4962,
+        c2 = 1.4962,
+        w = 0.7298,
+        wdamp = 1.0,
+        verbose = false)
     dim = length(prob.u0)
     lb = prob.lb === nothing ? fill(eltype(prob.u0)(-Inf), dim) : prob.lb
     ub = prob.ub === nothing ? fill(eltype(prob.u0)(Inf), dim) : prob.ub
@@ -112,7 +112,7 @@ function PSO(prob::OptimizationProblem;
 end
 
 function update_particle_states_cpu!(prob, particles, gbest_ref, w, lb, ub; c1 = 1.4962f0,
-    c2 = 1.4962f0)
+        c2 = 1.4962f0)
     # i = 1
 
     ## Access the particle
@@ -160,12 +160,12 @@ function update_particle_states_cpu!(prob, particles, gbest_ref, w, lb, ub; c1 =
 end
 
 function pso_solve_cpu!(prob,
-    gbest,
-    cpu_particles;
-    maxiters = 100,
-    w = 0.7298f0,
-    wdamp = 1.0f0,
-    debug = false)
+        gbest,
+        cpu_particles;
+        maxiters = 100,
+        w = 0.7298f0,
+        wdamp = 1.0f0,
+        debug = false)
     sol_ref = Ref(gbest)
     lb = prob.lb === nothing ? fill(eltype(prob.u0)(-Inf), length(prob.u0)) : prob.lb
     ub = prob.ub === nothing ? fill(eltype(prob.u0)(Inf), length(prob.u0)) : prob.ub
