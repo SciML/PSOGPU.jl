@@ -1,5 +1,5 @@
 function update_particle_states!(prob, gpu_particles, gbest_ref, w; c1 = 1.4962f0,
-    c2 = 1.4962f0)
+        c2 = 1.4962f0)
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(gpu_particles) && return
 
@@ -50,12 +50,12 @@ function update_particle_states!(prob, gpu_particles, gbest_ref, w; c1 = 1.4962f
 end
 
 function pso_solve_gpu!(prob,
-    gbest,
-    gpu_particles;
-    maxiters = 100,
-    w = 0.7298f0,
-    wdamp = 1.0f0,
-    debug = false)
+        gbest,
+        gpu_particles;
+        maxiters = 100,
+        w = 0.7298f0,
+        wdamp = 1.0f0,
+        debug = false)
 
     ## Initialize stuff
 

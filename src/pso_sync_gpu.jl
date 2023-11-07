@@ -1,5 +1,5 @@
 function _update_particle_states!(prob, gpu_particles, gbest, w; c1 = 1.4962f0,
-    c2 = 1.4962f0)
+        c2 = 1.4962f0)
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(gpu_particles) && return
 
@@ -35,12 +35,12 @@ function _update_particle_states!(prob, gpu_particles, gbest, w; c1 = 1.4962f0,
 end
 
 function pso_solve_sync_gpu!(prob,
-    gbest,
-    gpu_particles;
-    maxiters = 100,
-    w = 0.7298f0,
-    wdamp = 1.0f0,
-    debug = false)
+        gbest,
+        gpu_particles;
+        maxiters = 100,
+        w = 0.7298f0,
+        wdamp = 1.0f0,
+        debug = false)
     update_particle_kernel = @cuda launch=false _update_particle_states!(prob,
         gpu_particles,
         gbest, w)

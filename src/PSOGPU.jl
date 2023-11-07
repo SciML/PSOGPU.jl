@@ -30,8 +30,8 @@ struct ParallelSyncPSO
 end
 
 function ParallelPSOKernel(num_particles::Int;
-    async = false,
-    gpu = false, threaded = false)
+        async = false,
+        gpu = false, threaded = false)
     ParallelPSOKernel(num_particles, async, gpu, threaded)
 end
 
@@ -50,9 +50,14 @@ include("./pso_sync_gpu.jl")
 include("./ode_pso.jl")
 
 function SciMLBase.__solve(prob::OptimizationProblem,
-    opt::ParallelPSOKernel,
-    args...;
-    kwargs...)
+        opt::ParallelPSOKernel,
+        args...;
+        kwargs...)
+    lb = prob.lb === nothing ? fill(eltype(prob.u0)(-Inf), length(prob.u0)) : prob.lb
+    ub = prob.ub === nothing ? fill(eltype(prob.u0)(Inf), length(prob.u0)) : prob.ub
+
+    prob = remake(prob; lb = lb, ub = ub)
+
     if !(opt.gpu)
         if opt.threaded
             gbest = PSO(prob; population = opt.num_particles, kwargs...)
@@ -79,9 +84,14 @@ function SciMLBase.__solve(prob::OptimizationProblem,
 end
 
 function SciMLBase.__solve(prob::OptimizationProblem,
-    opt::ParallelSyncPSO,
-    args...;
-    kwargs...)
+        opt::ParallelSyncPSO,
+        args...;
+        kwargs...)
+    lb = prob.lb === nothing ? fill(eltype(prob.u0)(-Inf), length(prob.u0)) : prob.lb
+    ub = prob.ub === nothing ? fill(eltype(prob.u0)(Inf), length(prob.u0)) : prob.ub
+
+    prob = remake(prob; lb = lb, ub = ub)
+
     init_gbest, particles = init_particles(prob, opt.num_particles)
     gpu_particles = cu(particles)
     init_gbest = init_gbest
@@ -95,7 +105,7 @@ using Base
 
 ## required overloads for min or max computation on particles
 function Base.isless(a::PSOGPU.PSOParticle{T1, T2},
-    b::PSOGPU.PSOParticle{T1, T2}) where {T1, T2}
+        b::PSOGPU.PSOParticle{T1, T2}) where {T1, T2}
     a.cost < b.cost
 end
 

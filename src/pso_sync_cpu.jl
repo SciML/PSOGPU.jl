@@ -1,5 +1,5 @@
 function update_particles(prob, gpu_particles, gbest_ref, w; c1 = 1.4962f0,
-    c2 = 1.4962f0)
+        c2 = 1.4962f0)
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(gpu_particles) && return
 
