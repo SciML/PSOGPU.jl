@@ -91,9 +91,7 @@ function parameter_estim_ode!(prob::ODEProblem,
 
         update_costs!(losses, gpu_particles; config_costs.threads, config_costs...)
 
-        best_particle = mapreduce(x -> x,
-            min,
-            gpu_particles,
+        best_particle = minimum(gpu_particles,
             init = PSOGPU.PSOParticle(gbest.position,
                 gbest.position,
                 gbest.cost,

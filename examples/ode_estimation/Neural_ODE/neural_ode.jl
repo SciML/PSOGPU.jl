@@ -1,12 +1,12 @@
 using SimpleChains, StaticArrays, OrdinaryDiffEq
 
-u0 = @SArray [2.0, 0.0]
+u0 = @SArray Float32[2.0, 0.0]
 datasize = 30
-tspan = (0.0, 1.5)
+tspan = (0.0f0, 1.5f0)
 tsteps = range(tspan[1], tspan[2], length = datasize)
 
 function trueODE(u, p, t)
-    true_A = @SMatrix [-0.1 2.0; -2.0 -0.1]
+    true_A = @SMatrix Float32[-0.1 2.0; -2.0 -0.1]
     ((u .^ 3)'true_A)'
 end
 
@@ -14,11 +14,11 @@ prob = ODEProblem(trueODE, u0, tspan)
 data = Array(solve(prob, Tsit5(), saveat = tsteps))
 
 sc = SimpleChain(static(2),
-    Activation(x -> x .* 3),
+    Activation(x -> x .^ 3),
     TurboDense{true}(tanh, static(2)),
     TurboDense{true}(identity, static(2)))
 
-p_nn = SimpleChains.init_params(sc, Float64)
+p_nn = SimpleChains.init_params(sc)
 
 function nn_fn(u::T, p, t)::T where {T}
     nn, ps = p
@@ -35,17 +35,17 @@ n_particles = 10_000
 
 function loss(u, p)
     odeprob, t = p
-    prob = remake(odeprob; p = u)
+    prob = remake(odeprob; p = (odeprob.p[1], u))
     pred = Array(solve(prob, Tsit5(), saveat = t))
     sum(abs2, data .- pred)
 end
 
-lb = SVector{length(optprob.u0), eltype(optprob.u0)}(fill(eltype(optprob.u0)(-1),
-    length(optprob.u0))...)
-ub = SVector{length(optprob.u0), eltype(optprob.u0)}(fill(eltype(optprob.u0)(1),
-    length(optprob.u0))...)
+lb = SVector{length(p_static), eltype(p_static)}(fill(eltype(p_static)(-10),
+    length(p_static))...)
+ub = SVector{length(p_static), eltype(p_static)}(fill(eltype(p_static)(10),
+    length(p_static))...)
 
-optprob = OptimizationProblem(loss, prob_nn.p[2], (prob_n, tsteps); lb = lb, ub = ub)
+optprob = OptimizationProblem(loss, prob_nn.p[2], (prob_nn, tsteps); lb = lb, ub = ub)
 
 using PSOGPU
 using CUDA
@@ -59,15 +59,13 @@ gpu_particles = cu(particles)
 
 CUDA.allowscalar(false)
 
-gg = copy(gpu_particles)
-
 function prob_func(prob, gpu_particle)
     return remake(prob, p = (prob.p[1], gpu_particle.position))
 end
 
 @time gsol = PSOGPU.parameter_estim_ode!(prob_nn,
-    gg,
+    gpu_particles,
     gbest,
     gpu_data,
     lb,
-    ub; saveat = tsteps, dt = 0.1, prob_func = prob_func, maxiters = 1000)
+    ub; saveat = tsteps, dt = 0.1f0, prob_func = prob_func, maxiters = 300)
