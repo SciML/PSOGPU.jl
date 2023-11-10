@@ -41,6 +41,7 @@ function pso_solve_sync_gpu!(prob,
         w = 0.7298f0,
         wdamp = 1.0f0,
         debug = false)
+    @show minimum(gpu_particles)
     update_particle_kernel = @cuda launch=false _update_particle_states!(prob,
         gpu_particles,
         gbest, w)
@@ -58,7 +59,7 @@ function pso_solve_sync_gpu!(prob,
     end
 
     for i in 1:maxiters
-        update_particle_kernel(prob, gpu_particles, gbest, w)
+        update_particle_kernel(prob, gpu_particles, gbest, w; config...)
         best_particle = minimum(gpu_particles)
         gbest = PSOGBest(best_particle.position, best_particle.best_cost)
         w = w * wdamp

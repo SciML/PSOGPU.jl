@@ -106,7 +106,7 @@ using Base
 ## required overloads for min or max computation on particles
 function Base.isless(a::PSOGPU.PSOParticle{T1, T2},
         b::PSOGPU.PSOParticle{T1, T2}) where {T1, T2}
-    a.cost < b.cost
+    a.best_cost < b.best_cost
 end
 
 function Base.typemax(::Type{PSOGPU.PSOParticle{T1, T2}}) where {T1, T2}

@@ -1,4 +1,4 @@
-function _update_particle_states!(lb, ub, gpu_particles, gbest, w; c1 = 1.4962f0,
+function _update_particle_states!(gpu_particles, lb, ub, gbest, w; c1 = 1.4962f0,
         c2 = 1.4962f0)
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(gpu_particles) && return
@@ -30,8 +30,9 @@ function _update_particle_costs!(losses, gpu_particles)
     i > length(losses) && return
 
     @inbounds particle = gpu_particles[i]
+    @inbounds loss = losses[i]
 
-    @set! particle.cost = convert(typeof(particle.cost), losses[i])
+    @set! particle.cost = loss
 
     if particle.cost < particle.best_cost
         @set! particle.best_position = particle.position
@@ -55,19 +56,30 @@ function parameter_estim_ode!(prob::ODEProblem,
         ub;
         ode_alg = GPUTsit5(),
         prob_func = default_prob_func,
-        w = 0.72980,
-        wdamp = 1.00,
+        w = 0.72980f0,
+        wdamp = 1.0f0,
         maxiters = 100, kwargs...)
-    update_states! = @cuda launch=false _update_particle_states!(lb,
+    update_states! = @cuda launch=false PSOGPU._update_particle_states!(gpu_particles, lb,
         ub,
-        gpu_particles,
         gbest,
         w)
+
+    losses = CUDA.ones(1, length(gpu_particles))
+    update_costs! = @cuda launch=false PSOGPU._update_particle_costs!(losses, gpu_particles)
+
+    config_states = launch_configuration(update_states!.fun)
+    config_costs = launch_configuration(update_costs!.fun)
 
     improb = make_prob_compatible(prob)
 
     for i in 1:maxiters
-        update_states!(lb, ub, gpu_particles, gbest, w)
+        update_states!(gpu_particles,
+            lb,
+            ub,
+            gbest,
+            w;
+            config_states.threads,
+            config_states...)
 
         probs = prob_func.(Ref(improb), gpu_particles)
 
@@ -75,15 +87,18 @@ function parameter_estim_ode!(prob::ODEProblem,
             prob,
             ode_alg; kwargs...)
 
-        losses = sum((map(x -> sum(x .^ 2), data .- us)), dims = 1)
+        sum!(losses, (map(x -> sum(x .^ 2), data .- us)))
 
-        @cuda _update_particle_costs!(losses, gpu_particles)
+        update_costs!(losses, gpu_particles; config_costs.threads, config_costs...)
 
-        # @show typeof(gpu_particles)
+        best_particle = minimum(gpu_particles,
+            init = PSOGPU.PSOParticle(gbest.position,
+                gbest.position,
+                gbest.cost,
+                gbest.position,
+                gbest.cost))
 
-        best_particle = minimum(gpu_particles)
         gbest = PSOGPU.PSOGBest(best_particle.best_position, best_particle.best_cost)
-        # @show gbest
         w = w * wdamp
     end
     return gbest

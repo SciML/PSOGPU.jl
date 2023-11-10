@@ -75,7 +75,7 @@ function pso_solve_gpu!(prob,
 
     for i in 1:maxiters
         ## Invoke GPU Kernel here
-        kernel(prob, gpu_particles, gbest, w)
+        kernel(prob, gpu_particles, gbest, w; config...)
         w = w * wdamp
     end
 
