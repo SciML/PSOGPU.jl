@@ -14,7 +14,11 @@ function init_particles(prob, n_particles)
     p = prob.p
 
     if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-        gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
+        if prob.u0 isa ComponentVector
+            gbest_position = ComponentArray(undef, getaxes(prob.u0))
+        else
+            gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
+        end
         for i in 1:dim
             if abs(prob.u0[i]) > 0
                 gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
@@ -31,7 +35,11 @@ function init_particles(prob, n_particles)
     particles = PSOParticle[]
     for i in 1:n_particles
         if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-            position = Array{eltype(prob.u0), 1}(undef, dim)
+            if prob.u0 isa ComponentVector
+                position = ComponentArray(undef, getaxes(prob.u0))
+            else
+                position = Array{eltype(prob.u0), 1}(undef, dim)
+            end
             for i in 1:dim
                 if abs(prob.u0[i]) > 0
                     position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
@@ -65,7 +73,11 @@ function init_particles(prob, population, ::CPU)
     cost_func = prob.f
 
     if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-        gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
+        if prob.u0 isa ComponentVector
+            gbest_position = ComponentArray(undef, getaxes(prob.u0))
+        else
+            gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
+        end
         for i in 1:dim
             if abs(prob.u0[i]) > 0
                 gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
@@ -82,7 +94,11 @@ function init_particles(prob, population, ::CPU)
     particles = Particle[]
     for i in 1:population
         if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-            position = Array{eltype(prob.u0), 1}(undef, dim)
+            if prob.u0 isa ComponentVector
+                position = ComponentArray(undef, getaxes(prob.u0))
+            else
+                position = Array{eltype(prob.u0), 1}(undef, dim)
+            end
             for i in 1:dim
                 if abs(prob.u0[i]) > 0
                     position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
