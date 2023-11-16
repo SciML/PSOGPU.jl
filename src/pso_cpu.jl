@@ -1,14 +1,14 @@
 # Based on: https://stackoverflow.com/questions/65342388/why-my-code-in-julia-is-getting-slower-for-higher-iteration
 
 mutable struct Particle{T}
-    position::Array{T, 1}
-    velocity::Array{T, 1}
+    position::AbstractVector{T}
+    velocity::AbstractVector{T}
     cost::T
-    best_position::Array{T, 1}
+    best_position::AbstractVector{T}
     best_cost::T
 end
 mutable struct Gbest{T}
-    position::Array{T, 1}
+    position::AbstractVector{T}
     cost::T
 end
 
@@ -19,7 +19,11 @@ function _init_particles(prob, population)
     cost_func = prob.f
 
     if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-        gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
+        if prob.u0 isa ComponentVector
+            gbest_position = ComponentArray(undef, getaxes(prob.u0))
+        else
+            gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
+        end
         for i in 1:dim
             if abs(prob.u0[i]) > 0
                 gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
@@ -30,12 +34,17 @@ function _init_particles(prob, population)
     else
         gbest_position = uniform(dim, lb, ub)
     end
+
     gbest = Gbest(gbest_position, cost_func(gbest_position, prob.p))
 
     particles = Particle[]
     for i in 1:population
         if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-            position = Array{eltype(prob.u0), 1}(undef, dim)
+            if prob.u0 isa ComponentVector
+                position = ComponentArray(undef, getaxes(prob.u0))
+            else
+                position = Array{eltype(prob.u0), 1}(undef, dim)
+            end
             for i in 1:dim
                 if abs(prob.u0[i]) > 0
                     position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
