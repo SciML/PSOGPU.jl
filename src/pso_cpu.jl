@@ -26,7 +26,7 @@ function PSO(prob::OptimizationProblem;
     cost_func = prob.f
     p = prob.p
 
-    gbest, particles = init_particles(prob, population, CPU())
+    gbest, particles = init_particles(prob, population, true, CPU())
 
     # main loop
     for iter in 1:maxiters
