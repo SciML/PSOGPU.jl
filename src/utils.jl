@@ -40,7 +40,7 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: SArray}
                 end
             end
         else
-            position = uniform(dim, lb, ub)
+            position = positions[:,i]
         end
         position = SVector{length(position), eltype(position)}(position)
         velocity = @SArray zeros(eltype(position), dim)
@@ -90,7 +90,7 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: AbstractArray}
                 end
             end
         else
-            position = uniform(dim, lb, ub)
+            position = positions[:,i]
         end
         velocity = zeros(eltype(position), dim)
         cost = cost_func(position, prob.p)
