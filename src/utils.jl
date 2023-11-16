@@ -63,6 +63,7 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: AbstractArray}
     lb = prob.lb
     ub = prob.ub
     cost_func = prob.f
+    p = prob.p
 
     if lb === nothing || (all(isinf, lb) && all(isinf, ub))
         gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
