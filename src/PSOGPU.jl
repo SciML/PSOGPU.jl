@@ -1,6 +1,6 @@
 module PSOGPU
 
-using SciMLBase, StaticArrays, Setfield, CUDA
+using SciMLBase, StaticArrays, Setfield, CUDA, ComponentArrays, Lux, Functors
 
 import DiffEqGPU: GPUTsit5, vectorized_asolve, make_prob_compatible
 
@@ -115,6 +115,17 @@ function Base.typemax(::Type{PSOGPU.PSOParticle{T1, T2}}) where {T1, T2}
         typemax(T2),
         similar(T1),
         typemax(T2))
+end
+
+function vector_to_parameters(ps_new::AbstractVector, ps::ComponentArray)
+    @assert length(ps_new) == Lux.parameterlength(ps)
+    i = 1
+    function get_ps(x)
+        z = reshape(view(ps_new, i:(i + length(x) - 1)), size(x))
+        i += length(x)
+        return z
+    end
+    return fmap(get_ps, ps)
 end
 
 export ParallelPSOKernel, ParallelSyncPSO, OptimizationProblem, solve

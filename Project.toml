@@ -5,8 +5,12 @@ version = "1.0.0-DEV"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
 DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
+Functors = "d9f16b24-f501-4c13-a1f2-28368ffc5196"
+Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
 MLDatasets = "eb30cadb-4394-5ae3-aed4-317e484a6458"
+NeuralPDE = "315f7962-48a3-4962-8226-d0f33b1235f0"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
