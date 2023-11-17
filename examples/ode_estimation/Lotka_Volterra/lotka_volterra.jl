@@ -1,4 +1,4 @@
-using StaticArrays, SciMLBase
+using StaticArrays, SciMLBase, OrdinaryDiffEq
 
 function f(u, p, t)
     dx = p[1] * u[1] - p[2] * u[1] * u[2]
