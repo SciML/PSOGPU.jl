@@ -46,4 +46,4 @@ ub = SVector{length(optprob.u0), eltype(optprob.u0)}(fill(eltype(optprob.u0)(Inf
     gbest,
     gpu_data,
     lb,
-    ub; saveat = t, dt = 0.1)
+    ub; saveat = t, dt = 0.1, backend = CUDABackend())

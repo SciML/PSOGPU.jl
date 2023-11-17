@@ -1,6 +1,6 @@
 module PSOGPU
 
-using SciMLBase, StaticArrays, Setfield, CUDA
+using SciMLBase, StaticArrays, Setfield, KernelAbstractions
 
 import DiffEqGPU: GPUTsit5, vectorized_asolve, make_prob_compatible
 
@@ -38,9 +38,6 @@ end
 SciMLBase.allowsbounds(::ParallelPSOKernel) = true
 SciMLBase.allowsbounds(::ParallelSyncPSO) = true
 # SciMLBase.requiresbounds(::ParallelPSOKernel) = true
-
-struct GPU end
-struct CPU end
 
 include("./pso_cpu.jl")
 include("./pso_gpu.jl")
