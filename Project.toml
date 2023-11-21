@@ -4,9 +4,11 @@ authors = ["Utkarsh <rajpututkarsh530@gmail.com> and contributors"]
 version = "1.0.0-DEV"
 
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
 MLDatasets = "eb30cadb-4394-5ae3-aed4-317e484a6458"
+ParameterizedFunctions = "65888b18-ceab-5e60-b2b9-181511a3b968"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
