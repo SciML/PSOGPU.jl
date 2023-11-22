@@ -63,16 +63,18 @@ function SciMLBase.__solve(prob::OptimizationProblem,
             gbest = pso_solve_cpu!(prob, init_gbest, particles; kwargs...)
         end
     else
+        backend = opt.backend
+        init_gbest, particles = init_particles(prob, opt.num_particles)
+        # TODO: Do the equivalent of cu()/roc()
+        particles_eltype = eltype(particles) === Float64 ? Float32 : eltype(particles)
+        gpu_particles = KernelAbstractions.allocate(backend, particles_eltype, size(particles))
+        copyto!(gpu_particles, particles)
+        gpu_init_gbest = KernelAbstractions.allocate(backend, typeof(init_gbest), (1,))
+        copyto!(gpu_init_gbest, [init_gbest])
         if opt.async
-            init_gbest, particles = init_particles(prob, opt.num_particles)
-            gpu_particles = cu(particles)
-            init_gbest = cu([init_gbest])
-            gbest = pso_solve_async_gpu!(prob, init_gbest, gpu_particles; kwargs...)
+            gbest = pso_solve_async_gpu!(prob, gpu_init_gbest, gpu_particles; kwargs...)
         else
-            init_gbest, particles = init_particles(prob, opt.num_particles)
-            gpu_particles = cu(particles)
-            init_gbest = cu([init_gbest])
-            gbest = pso_solve_gpu!(prob, init_gbest, gpu_particles; kwargs...)
+            gbest = pso_solve_gpu!(prob, gpu_init_gbest, gpu_particles; kwargs...)
         end
     end
 
