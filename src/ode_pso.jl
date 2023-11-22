@@ -48,14 +48,33 @@ function default_prob_func(prob, gpu_particle)
     return remake(prob, p = gpu_particle.position)
 end
 
-function parameter_estim_ode!(prob::ODEProblem,
+function build_ode_objective(prob::ODEProblem, alg = GPUTsit5(), data = nothing,  kwargs...)
+
+    if isnothing(data)
+        throw(ArgumentError("data must be provided for parameter estimation"))
+    end
+
+    improb = make_prob_compatible(prob)
+
+    function obj(losses, gpu_particles, prob = prob, alg = alg, data = data, kwargs...)
+        probs = default_prob_func.(Ref(improb), gpu_particles)
+
+        ts, us = vectorized_asolve(probs,
+            prob,
+            alg; kwargs...)
+
+        sum!(losses, (map(x -> sum(x .^ 2), data .- us)))
+    end
+
+    return OptimizationProblem(OptimizationFunction(obj))
+end
+
+
+function parameter_estim_ode!(
         gpu_particles,
         gbest,
-        data,
         lb,
         ub;
-        ode_alg = GPUTsit5(),
-        prob_func = default_prob_func,
         w = 0.72980f0,
         wdamp = 1.0f0,
         maxiters = 100, kwargs...)
@@ -65,12 +84,11 @@ function parameter_estim_ode!(prob::ODEProblem,
         w)
 
     losses = CUDA.ones(1, length(gpu_particles))
+    
     update_costs! = @cuda launch=false PSOGPU._update_particle_costs!(losses, gpu_particles)
 
     config_states = launch_configuration(update_states!.fun)
     config_costs = launch_configuration(update_costs!.fun)
-
-    improb = make_prob_compatible(prob)
 
     for i in 1:maxiters
         update_states!(gpu_particles,
@@ -81,14 +99,7 @@ function parameter_estim_ode!(prob::ODEProblem,
             config_states.threads,
             config_states...)
 
-        probs = prob_func.(Ref(improb), gpu_particles)
-
-        ts, us = vectorized_asolve(probs,
-            prob,
-            ode_alg; kwargs...)
-
-        sum!(losses, (map(x -> sum(x .^ 2), data .- us)))
-
+        
         update_costs!(losses, gpu_particles; config_costs.threads, config_costs...)
 
         best_particle = minimum(gpu_particles,
