@@ -48,7 +48,7 @@ function default_prob_func(prob, gpu_particle)
     return remake(prob, p = gpu_particle.position)
 end
 
-function build_ode_objective(prob::ODEProblem, alg = GPUTsit5(), data = nothing,  kwargs...)
+function build_ode_objective(prob::ODEProblem, alg = GPUTsit5(), data = nothing, population = 100, kwargs...)
 
     if isnothing(data)
         throw(ArgumentError("data must be provided for parameter estimation"))
@@ -66,11 +66,12 @@ function build_ode_objective(prob::ODEProblem, alg = GPUTsit5(), data = nothing,
         sum!(losses, (map(x -> sum(x .^ 2), data .- us)))
     end
 
-    return OptimizationProblem(OptimizationFunction(obj))
+    return OptimizationProblem(OptimizationFunction(obj), ones(Float32, population))
 end
 
 
 function parameter_estim_ode!(
+        prob::OptimizationProblem,
         gpu_particles,
         gbest,
         lb,
@@ -78,10 +79,8 @@ function parameter_estim_ode!(
         w = 0.72980f0,
         wdamp = 1.0f0,
         maxiters = 100, kwargs...)
-    update_states! = @cuda launch=false PSOGPU._update_particle_states!(gpu_particles, lb,
-        ub,
-        gbest,
-        w)
+
+    update_states! = @cuda launch=false PSOGPU._update_particle_states!(prob, gpu_particles, gbest, w)
 
     losses = CUDA.ones(1, length(gpu_particles))
     

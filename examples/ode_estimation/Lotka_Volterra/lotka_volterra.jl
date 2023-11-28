@@ -31,7 +31,7 @@ n_particles = 10_000
 
 gbest, particles = PSOGPU.init_particles(optprob, n_particles)
 
-gpu_data = cu([@SArray ones(length(prob.u0))])
+gpu_data = [@SArray ones(length(prob.u0))]
 
 gpu_particles = cu(particles)
 
