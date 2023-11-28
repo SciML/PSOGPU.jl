@@ -20,6 +20,12 @@ sol = solve(prob, ParallelPSOKernel(n_particles; backend = CUDABackend()), maxit
 
 @test sol.objective < 1e-4
 
+sol = solve(prob,
+    ParallelSyncPSO(n_particles, CUDABackend()),
+    maxiters = 500)
+
+@test sol.objective < 1e-4
+
 prob = OptimizationProblem(rosenbrock, x0, p)
 
 n_particles = 2000
