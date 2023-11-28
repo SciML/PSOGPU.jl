@@ -8,7 +8,8 @@
         ## Update velocity
 
         updated_velocity = w .* particle.velocity .+
-                           c1 .* rand(typeof(particle.velocity)) .* (particle.best_position -
+                           c1 .* rand(typeof(particle.velocity)) .*
+                           (particle.best_position -
                             particle.position) .+
                            c2 .* rand(typeof(particle.velocity)) .*
                            (gbest.position - particle.position)
@@ -38,14 +39,17 @@ function pso_solve_sync_gpu!(prob,
         maxiters = 100,
         w = 0.7298f0,
         wdamp = 1.0f0,
-        debug = false,
-        backend = CPU())
-    @show minimum(gpu_particles)
+        debug = false)
+    backend = get_backend(gpu_particles)
 
     update_particle_kernel = _update_particle_states!(backend)
 
     for i in 1:maxiters
-        update_particle_kernel(prob, gpu_particles, gbest, w; ndrange=length(gpu_particles))
+        update_particle_kernel(prob,
+            gpu_particles,
+            gbest,
+            w;
+            ndrange = length(gpu_particles))
         best_particle = minimum(gpu_particles)
         gbest = PSOGBest(best_particle.position, best_particle.best_cost)
         w = w * wdamp

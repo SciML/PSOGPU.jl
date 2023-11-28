@@ -5,7 +5,8 @@
         @inbounds particle = gpu_particles[i]
 
         updated_velocity = w .* particle.velocity .+
-                           c1 .* rand(typeof(particle.velocity)) .* (particle.best_position -
+                           c1 .* rand(typeof(particle.velocity)) .*
+                           (particle.best_position -
                             particle.position) .+
                            c2 .* rand(typeof(particle.velocity)) .*
                            (gbest.position - particle.position)
@@ -54,8 +55,8 @@ function parameter_estim_ode!(prob::ODEProblem,
         prob_func = default_prob_func,
         w = 0.72980f0,
         wdamp = 1.0f0,
-        maxiters = 100,
-        backend = CPU(), kwargs...)
+        maxiters = 100, kwargs...)
+    backend = get_backend(gpu_particles)
     update_states! = PSOGPU._update_particle_states!(backend)
 
     losses = KernelAbstractions.ones(backend, 1, length(gpu_particles))
@@ -69,7 +70,7 @@ function parameter_estim_ode!(prob::ODEProblem,
             ub,
             gbest,
             w;
-            ndrange=length(gpu_particles))
+            ndrange = length(gpu_particles))
 
         probs = prob_func.(Ref(improb), gpu_particles)
 
@@ -79,7 +80,7 @@ function parameter_estim_ode!(prob::ODEProblem,
 
         sum!(losses, (map(x -> sum(x .^ 2), data .- us)))
 
-        update_costs!(losses, gpu_particles; ndrange=length(losses))
+        update_costs!(losses, gpu_particles; ndrange = length(losses))
 
         best_particle = minimum(gpu_particles,
             init = PSOGPU.PSOParticle(gbest.position,

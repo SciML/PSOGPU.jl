@@ -55,13 +55,14 @@ function pso_solve_async_gpu!(prob,
         maxiters = 100,
         w = 0.7298f0,
         wdamp = 1.0f0,
-        debug = false,
-        backend = CPU())
+        debug = false)
 
     ## Initialize stuff
 
+    backend = get_backend(gpu_particles)
+
     kernel = update_particle_states_async!(backend)
-    kernel(prob, gpu_particles, gbest, w, wdamp, maxiters; ndrange=length(gpu_particles))
+    kernel(prob, gpu_particles, gbest, w, wdamp, maxiters; ndrange = length(gpu_particles))
 
     best_particle = minimum(gpu_particles)
     return PSOGBest(best_particle.best_position, best_particle.best_cost)

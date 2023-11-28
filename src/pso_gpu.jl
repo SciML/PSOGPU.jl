@@ -14,7 +14,8 @@
         ## Update velocity
 
         updated_velocity = w .* particle.velocity .+
-                           c1 .* rand(typeof(particle.velocity)) .* (particle.best_position -
+                           c1 .* rand(typeof(particle.velocity)) .*
+                           (particle.best_position -
                             particle.position) .+
                            c2 .* rand(typeof(particle.velocity)) .*
                            (gbest.position - particle.position)
@@ -54,16 +55,17 @@ function pso_solve_gpu!(prob,
         maxiters = 100,
         w = 0.7298f0,
         wdamp = 1.0f0,
-        debug = false,
-        backend = CPU())
+        debug = false)
 
     ## Initialize stuff
+
+    backend = get_backend(gpu_particles)
 
     kernel = update_particle_states!(backend)
 
     for i in 1:maxiters
         ## Invoke GPU Kernel here
-        kernel(prob, gpu_particles, gbest, w; ndrange=length(gpu_particles))
+        kernel(prob, gpu_particles, gbest, w; ndrange = length(gpu_particles))
         w = w * wdamp
     end
 
