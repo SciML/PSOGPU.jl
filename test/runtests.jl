@@ -9,7 +9,8 @@ const GROUP = get(ENV, "GROUP", "All")
 end
 
 if GROUP == "CUDA"
-    @testset "Rosenbrock on gpu" begin
+    @testset "Rosenbrock on gpu = $(n)" for n in 2:4
+        global N = n
         include("./gpu.jl")
     end
 end
