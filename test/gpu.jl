@@ -1,5 +1,3 @@
-include("./utils.jl")
-
 Random.seed!(1234)
 
 ## Solving the rosenbrock problem
