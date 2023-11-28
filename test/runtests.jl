@@ -10,6 +10,11 @@ end
 
 if GROUP != "CPU"
     @eval using $(Symbol(GROUP))
+    if GROUP == "CUDA"
+        backend = CUDABackend()
+    elseif GROUP == "AMDGPU"
+        backend = ROCBackend()
+    end
 
     @testset "Rosenbrock on gpu" begin
         include("./gpu.jl")
