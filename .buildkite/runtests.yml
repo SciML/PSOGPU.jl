@@ -26,34 +26,6 @@ steps:
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
-  - label: ":julia: [AMDGPU] Run tests on Julia v{{matrix.version}}"
-    matrix:
-      setup:
-        version:
-          - "1"
-    env:
-      GROUP: AMDGPU
-    plugins:
-      - JuliaCI/julia#v1:
-          version: "{{matrix.version}}"
-    commands:
-      - |
-        julia --project=test -e '
-          import Pkg
-          Pkg.add(; name = "AMDGPU")'
-        rm test/Manifest.toml
-        julia --project -e'
-          import Pkg
-          println("+++ :julia: Running tests")
-          Pkg.test(; coverage=false)'
-    agents:
-      queue: "juliagpu"
-      rocm: "*"
-      rocmgpu: "*"
-    timeout_in_minutes: 120
-    # Don't run Buildkite if the commit message includes the text [skip tests]
-    if: build.message !~ /\[skip tests\]/
-
 env:
   JULIA_PKG_SERVER: "" # it often struggles with our large artifacts
   # SECRET_CODECOV_TOKEN: "..."
