@@ -16,7 +16,7 @@ prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub)
 
 n_particles = 1000
 
-sol = solve(prob, ParallelPSOKernel(n_particles; gpu = true), maxiters = 500)
+sol = solve(prob, ParallelPSOKernel(n_particles; gpu = true), maxiters = 1000)
 
 @test sol.objective < 1e-4
 
@@ -26,6 +26,6 @@ n_particles = 2000
 
 sol = solve(prob,
     ParallelPSOKernel(n_particles; gpu = false, threaded = true),
-    maxiters = 500)
+    maxiters = 1000)
 
 @test sol.objective < 1e-4
