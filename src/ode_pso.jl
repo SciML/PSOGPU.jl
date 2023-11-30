@@ -1,47 +1,44 @@
-function _update_particle_states!(gpu_particles, lb, ub, gbest, w; c1 = 1.4962f0,
+@kernel function _update_particle_states!(gpu_particles, lb, ub, gbest, w; c1 = 1.4962f0,
         c2 = 1.4962f0)
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i > length(gpu_particles) && return
+    i = @index(Global, Linear)
+    if i <= length(gpu_particles)
+        @inbounds particle = gpu_particles[i]
 
-    @inbounds particle = gpu_particles[i]
+        updated_velocity = w .* particle.velocity .+
+                           c1 .* rand(typeof(particle.velocity)) .*
+                           (particle.best_position -
+                            particle.position) .+
+                           c2 .* rand(typeof(particle.velocity)) .*
+                           (gbest.position - particle.position)
 
-    updated_velocity = w .* particle.velocity .+
-                       c1 .* rand(typeof(particle.velocity)) .* (particle.best_position -
-                        particle.position) .+
-                       c2 .* rand(typeof(particle.velocity)) .*
-                       (gbest.position - particle.position)
+        @set! particle.velocity = updated_velocity
 
-    @set! particle.velocity = updated_velocity
+        @set! particle.position = particle.position + particle.velocity
 
-    @set! particle.position = particle.position + particle.velocity
+        update_pos = max(particle.position, lb)
+        update_pos = min(update_pos, ub)
 
-    update_pos = max(particle.position, lb)
-    update_pos = min(update_pos, ub)
+        @set! particle.position = update_pos
 
-    @set! particle.position = update_pos
-
-    @inbounds gpu_particles[i] = particle
-
-    return nothing
+        @inbounds gpu_particles[i] = particle
+    end
 end
 
-function _update_particle_costs!(losses, gpu_particles)
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i > length(losses) && return
+@kernel function _update_particle_costs!(losses, gpu_particles)
+    i = @index(Global, Linear)
+    if i <= length(losses)
+        @inbounds particle = gpu_particles[i]
+        @inbounds loss = losses[i]
 
-    @inbounds particle = gpu_particles[i]
-    @inbounds loss = losses[i]
+        @set! particle.cost = loss
 
-    @set! particle.cost = loss
+        if particle.cost < particle.best_cost
+            @set! particle.best_position = particle.position
+            @set! particle.best_cost = particle.cost
+        end
 
-    if particle.cost < particle.best_cost
-        @set! particle.best_position = particle.position
-        @set! particle.best_cost = particle.cost
+        @inbounds gpu_particles[i] = particle
     end
-
-    @inbounds gpu_particles[i] = particle
-
-    return nothing
 end
 
 function default_prob_func(prob, gpu_particle)
@@ -59,16 +56,11 @@ function parameter_estim_ode!(prob::ODEProblem,
         w = 0.72980f0,
         wdamp = 1.0f0,
         maxiters = 100, kwargs...)
-    update_states! = @cuda launch=false PSOGPU._update_particle_states!(gpu_particles, lb,
-        ub,
-        gbest,
-        w)
+    backend = get_backend(gpu_particles)
+    update_states! = PSOGPU._update_particle_states!(backend)
 
-    losses = CUDA.ones(1, length(gpu_particles))
-    update_costs! = @cuda launch=false PSOGPU._update_particle_costs!(losses, gpu_particles)
-
-    config_states = launch_configuration(update_states!.fun)
-    config_costs = launch_configuration(update_costs!.fun)
+    losses = KernelAbstractions.ones(backend, 1, length(gpu_particles))
+    update_costs! = PSOGPU._update_particle_costs!(backend)
 
     improb = make_prob_compatible(prob)
 
@@ -78,8 +70,7 @@ function parameter_estim_ode!(prob::ODEProblem,
             ub,
             gbest,
             w;
-            config_states.threads,
-            config_states...)
+            ndrange = length(gpu_particles))
 
         probs = prob_func.(Ref(improb), gpu_particles)
 
@@ -89,7 +80,7 @@ function parameter_estim_ode!(prob::ODEProblem,
 
         sum!(losses, (map(x -> sum(x .^ 2), data .- us)))
 
-        update_costs!(losses, gpu_particles; config_costs.threads, config_costs...)
+        update_costs!(losses, gpu_particles; ndrange = length(losses))
 
         best_particle = minimum(gpu_particles,
             init = PSOGPU.PSOParticle(gbest.position,
