@@ -1,4 +1,4 @@
-using StaticArrays, SciMLBase
+using StaticArrays, SciMLBase, OrdinaryDiffEq
 
 function f(u, p, t)
     dx = p[1] * u[1] - p[2] * u[1] * u[2]
@@ -46,4 +46,4 @@ ub = SVector{length(optprob.u0), eltype(optprob.u0)}(fill(eltype(optprob.u0)(Inf
     gbest,
     gpu_data,
     lb,
-    ub; saveat = t, dt = 0.1)
+    ub; saveat = t, dt = 0.1, backend = CUDABackend())

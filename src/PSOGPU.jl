@@ -1,6 +1,6 @@
 module PSOGPU
 
-using SciMLBase, StaticArrays, Setfield, CUDA
+using SciMLBase, StaticArrays, Setfield, KernelAbstractions
 
 import DiffEqGPU: GPUTsit5, vectorized_asolve, make_prob_compatible
 
@@ -19,28 +19,25 @@ struct PSOGBest{T1, T2 <: eltype(T1)}
     cost::T2
 end
 
-struct ParallelPSOKernel
+struct ParallelPSOKernel{Backend}
     num_particles::Int
     async::Bool
-    gpu::Bool
     threaded::Bool
+    backend::Backend
 end
-struct ParallelSyncPSO
+struct ParallelSyncPSO{Backend}
     num_particles::Int
+    backend::Backend
 end
 
 function ParallelPSOKernel(num_particles::Int;
-        async = false,
-        gpu = false, threaded = false)
-    ParallelPSOKernel(num_particles, async, gpu, threaded)
+        async = false, threaded = false, backend = CPU())
+    ParallelPSOKernel(num_particles, async, threaded, backend)
 end
 
 SciMLBase.allowsbounds(::ParallelPSOKernel) = true
 SciMLBase.allowsbounds(::ParallelSyncPSO) = true
 # SciMLBase.requiresbounds(::ParallelPSOKernel) = true
-
-struct GPU end
-struct CPU end
 
 include("./pso_cpu.jl")
 include("./pso_gpu.jl")
@@ -58,7 +55,8 @@ function SciMLBase.__solve(prob::OptimizationProblem,
 
     prob = remake(prob; lb = lb, ub = ub)
 
-    if !(opt.gpu)
+    ## TODO: Compare the performance of KA kernels with CPU backend with CPU implementations
+    if opt.backend isa CPU
         if opt.threaded
             gbest = PSO(prob; population = opt.num_particles, kwargs...)
         else
@@ -66,16 +64,20 @@ function SciMLBase.__solve(prob::OptimizationProblem,
             gbest = pso_solve_cpu!(prob, init_gbest, particles; kwargs...)
         end
     else
+        backend = opt.backend
+        init_gbest, particles = init_particles(prob, opt.num_particles)
+        # TODO: Do the equivalent of cu()/roc()
+        particles_eltype = eltype(particles) === Float64 ? Float32 : eltype(particles)
+        gpu_particles = KernelAbstractions.allocate(backend,
+            particles_eltype,
+            size(particles))
+        copyto!(gpu_particles, particles)
+        gpu_init_gbest = KernelAbstractions.allocate(backend, typeof(init_gbest), (1,))
+        copyto!(gpu_init_gbest, [init_gbest])
         if opt.async
-            init_gbest, particles = init_particles(prob, opt.num_particles)
-            gpu_particles = cu(particles)
-            init_gbest = cu([init_gbest])
-            gbest = pso_solve_async_gpu!(prob, init_gbest, gpu_particles; kwargs...)
+            gbest = pso_solve_async_gpu!(prob, gpu_init_gbest, gpu_particles; kwargs...)
         else
-            init_gbest, particles = init_particles(prob, opt.num_particles)
-            gpu_particles = cu(particles)
-            init_gbest = cu([init_gbest])
-            gbest = pso_solve_gpu!(prob, init_gbest, gpu_particles; kwargs...)
+            gbest = pso_solve_gpu!(prob, gpu_init_gbest, gpu_particles; kwargs...)
         end
     end
 
@@ -91,9 +93,11 @@ function SciMLBase.__solve(prob::OptimizationProblem,
     ub = prob.ub === nothing ? fill(eltype(prob.u0)(Inf), length(prob.u0)) : prob.ub
 
     prob = remake(prob; lb = lb, ub = ub)
-
+    backend = opt.backend
     init_gbest, particles = init_particles(prob, opt.num_particles)
-    gpu_particles = cu(particles)
+    particles_eltype = eltype(particles) === Float64 ? Float32 : eltype(particles)
+    gpu_particles = KernelAbstractions.allocate(backend, particles_eltype, size(particles))
+    copyto!(gpu_particles, particles)
     init_gbest = init_gbest
     gbest = pso_solve_sync_gpu!(prob, init_gbest, gpu_particles; kwargs...)
 
