@@ -49,6 +49,7 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: SArray}
         end
         position = SVector{length(position), eltype(position)}(position)
         velocity = @SArray zeros(eltype(position), dim)
+
         cost = cost_func(position, p)
         best_position = position
         best_cost = cost
@@ -125,4 +126,22 @@ function check_init_bounds(prob)
         ub = SVector{length(ub), eltype(ub)}(ub)
     end
     lb, ub
+end
+
+function calc_penalty(u,
+        prob::OptimizationProblem,
+        iter;
+        theta = theta_paper,
+        gamma = gamma_paper,
+        h = sqrt)
+    cons_ret = Array{eltype(prob.u0), 1}(undef, length(prob.lcons))
+    prob.f.cons(cons_ret, u, prob.p)
+    # @show cons_ret
+    q = max.(cons_ret, Ref(0))
+    # @show q
+    thetaq = theta.(q)
+    gammaq = gamma.(q)
+    # @show iter
+    penalty = abs(h(iter) * sum((arg) -> arg[2] * (arg[1]^arg[3]),
+        zip(q, thetaq, gammaq)))
 end
