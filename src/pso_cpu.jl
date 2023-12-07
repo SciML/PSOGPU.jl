@@ -63,8 +63,28 @@ function PSO(prob::OptimizationProblem;
     gbest
 end
 
-function update_particle_states_cpu!(prob, particles, gbest_ref, w, lb, ub; c1 = 1.4962f0,
-        c2 = 1.4962f0)
+function theta_paper(x)
+    if x < 0.001
+        return 10.0
+    elseif x <= 0.1
+        return 20.0
+    elseif x <= 1.0
+        return 100.0
+    else
+        return 300.0
+    end
+end
+
+function gamma_paper(x)
+    if x < 1
+        return 1
+    else
+        return 2
+    end
+end
+
+function update_particle_states_cpu!(prob, particles, gbest_ref, w, lb, ub, iter; c1 = 1.4962f0,
+        c2 = 1.4962f0, theta = theta_paper, gamma = gamma_paper, h = sqrt)
     # i = 1
 
     ## Access the particle
@@ -91,9 +111,20 @@ function update_particle_states_cpu!(prob, particles, gbest_ref, w, lb, ub; c1 =
         update_pos = max(particle.position, lb)
         update_pos = min(update_pos, ub)
         @set! particle.position = update_pos
+        println("dsjkh")
         # @set! particle.position = min(particle.position, ub)
-
-        @set! particle.cost = prob.f(particle.position, prob.p)
+        if !isnothing(prob.f.cons)
+            cons_ret = Array{eltype(prob.u0), 1}(undef, length(prob.lcons))
+            prob.f.cons(cons_ret, particle.position, prob.p)
+            q = max.(cons_ret, Ref(0))
+            thetaq = theta.(q)
+            gammaq = gamma.(q)
+            @set! particle.cost = prob.f(particle.position, prob.p) +  h(iter)*sum((arg) -> arg[2]*(arg[1]^arg[3]), zip(q, thetaq, gammaq))
+            println(particle.cost)
+        else
+            println("dsjkh")
+            @set! particle.cost = prob.f(particle.position, prob.p)
+        end
 
         if particle.cost < particle.best_cost
             @set! particle.best_position = particle.position
@@ -117,13 +148,13 @@ function pso_solve_cpu!(prob,
         maxiters = 100,
         w = 0.7298f0,
         wdamp = 1.0f0,
-        debug = false)
+        debug = false,
+        theta = theta_paper, gamma = gamma_paper, h = sqrt)
     sol_ref = Ref(gbest)
     lb = prob.lb === nothing ? fill(eltype(prob.u0)(-Inf), length(prob.u0)) : prob.lb
     ub = prob.ub === nothing ? fill(eltype(prob.u0)(Inf), length(prob.u0)) : prob.ub
     for i in 1:maxiters
-        ## Invoke GPU Kernel here
-        update_particle_states_cpu!(prob, cpu_particles, sol_ref, w, lb, ub)
+        update_particle_states_cpu!(prob, cpu_particles, sol_ref, w, lb, ub, i; theta = theta_paper, gamma = gamma_paper, h = sqrt)
         w = w * wdamp
     end
 
