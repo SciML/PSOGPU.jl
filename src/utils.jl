@@ -106,3 +106,9 @@ function init_particles(prob, population, ::CPU)
     end
     return gbest, particles
 end
+
+function check_init_bounds(prob)
+    lb = prob.lb === nothing ? fill(eltype(prob.u0)(-Inf), length(prob.u0)) : prob.lb
+    ub = prob.ub === nothing ? fill(eltype(prob.u0)(Inf), length(prob.u0)) : prob.ub
+    lb, ub
+end
