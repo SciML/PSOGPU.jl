@@ -23,10 +23,10 @@ function pso_solve(prob::OptimizationProblem,
     gpu_init_gbest = KernelAbstractions.allocate(backend, typeof(init_gbest), (1,))
     copyto!(gpu_init_gbest, [init_gbest])
 
-    if opt.async
+    if opt.global_update
         gbest = pso_solve_async_gpu!(prob, gpu_init_gbest, gpu_particles; kwargs...)
     else
-        gbest = pso_solve_gpu!(prob, gpu_init_gbest, gpu_particles; kwargs...)
+        gbest = vectorized_solve!(prob, gpu_init_gbest, gpu_particles, opt; kwargs...)
     end
 
     gbest
@@ -54,7 +54,7 @@ function pso_solve(prob::OptimizationProblem, opt::SerialPSO, args...; kwargs...
 end
 
 function pso_solve(prob::OptimizationProblem,
-        opt::ParallelSyncPSO,
+        opt::ParallelSyncPSOKernel,
         args...;
         kwargs...)
     backend = opt.backend
@@ -64,7 +64,6 @@ function pso_solve(prob::OptimizationProblem,
     copyto!(gpu_particles, particles)
     init_gbest = init_gbest
 
-    gbest = pso_solve_sync_gpu!(prob, init_gbest, gpu_particles; kwargs...)
-
+    gbest = vectorized_solve!(prob, init_gbest, gpu_particles, opt; kwargs...)
     gbest
 end

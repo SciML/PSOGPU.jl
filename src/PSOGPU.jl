@@ -39,6 +39,8 @@ include("./pso_async_gpu.jl")
 include("./utils.jl")
 include("./pso_sync_gpu.jl")
 include("./ode_pso.jl")
+include("./kernels.jl")
+include("./lowerlevel_solve.jl")
 include("./solve.jl")
 
 export ParallelPSOKernel,
