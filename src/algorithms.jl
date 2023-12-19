@@ -87,8 +87,8 @@ struct SerialPSO <: PSOAlogrithm
 end
 
 function ParallelPSOKernel(num_particles::Int;
-        async = false, backend = CPU())
-    ParallelPSOKernel(num_particles, async, backend)
+        global_update = false, backend = CPU())
+    ParallelPSOKernel(num_particles, global_update, backend)
 end
 
 function ParallelSyncPSOKernel(num_particles::Int;

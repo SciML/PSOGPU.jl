@@ -56,3 +56,30 @@ end
 
     @inbounds gpu_particles[i] = particle
 end
+
+@kernel function update_particle_states_async!(prob,
+        gpu_particles,
+        gbest_ref,
+        w, wdamp, maxiters;
+        c1 = 1.4962f0,
+        c2 = 1.4962f0)
+    i = @index(Global, Linear)
+
+    gbest = gbest_ref[1]
+
+    ## Access the particle
+    @inbounds particle = gpu_particles[i]
+
+    ## Run all generations
+    for i in 1:maxiters
+        particle = update_particle_state(particle, prob, gbest, w, c1, c2)
+        if particle.best_cost < gbest.cost
+            @set! gbest.position = particle.best_position
+            @set! gbest.cost = particle.best_cost
+        end
+        w = w * wdamp
+    end
+
+    @inbounds gpu_particles[i] = particle
+    @inbounds gbest_ref[1] = gbest
+end

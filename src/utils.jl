@@ -6,7 +6,7 @@ function uniform(dim::Int, lb::AbstractArray{T}, ub::AbstractArray{T}) where {T}
     return arr
 end
 
-function init_particles(prob, n_particles)
+function init_particles(prob, n_particles, ::Type{T}) where {T <: SArray}
     dim = length(prob.u0)
     lb = prob.lb
     ub = prob.ub
@@ -28,7 +28,7 @@ function init_particles(prob, n_particles)
 
     gbest_position = SVector{length(gbest_position), eltype(gbest_position)}(gbest_position)
     gbest_cost = cost_func(gbest_position, p)
-    particles = PSOParticle[]
+    particles = SPSOParticle[]
     for i in 1:n_particles
         if lb === nothing || (all(isinf, lb) && all(isinf, ub))
             position = Array{eltype(prob.u0), 1}(undef, dim)
@@ -45,20 +45,20 @@ function init_particles(prob, n_particles)
         position = SVector{length(position), eltype(position)}(position)
         velocity = @SArray zeros(eltype(position), dim)
         cost = cost_func(position, p)
-        best_position = copy(position)
-        best_cost = copy(cost)
-        push!(particles, PSOParticle(position, velocity, cost, best_position, best_cost))
+        best_position = position
+        best_cost = cost
+        push!(particles, SPSOParticle(position, velocity, cost, best_position, best_cost))
 
         if best_cost < gbest_cost
-            gbest_position = copy(best_position)
-            gbest_cost = copy(best_cost)
+            gbest_position = best_position
+            gbest_cost = best_cost
         end
     end
-    gbest = PSOGBest(gbest_position, gbest_cost)
+    gbest = SPSOGBest(gbest_position, gbest_cost)
     return gbest, convert(Vector{typeof(particles[1])}, particles)
 end
 
-function init_particles(prob, population, ::CPU)
+function init_particles(prob, n_particles, ::Type{T}) where {T <: AbstractArray}
     dim = length(prob.u0)
     lb = prob.lb
     ub = prob.ub
@@ -76,11 +76,10 @@ function init_particles(prob, population, ::CPU)
     else
         gbest_position = uniform(dim, lb, ub)
     end
+    gbest = MPSOGBest(gbest_position, cost_func(gbest_position, prob.p))
 
-    gbest = Gbest(gbest_position, cost_func(gbest_position, data_dict))
-
-    particles = Particle[]
-    for i in 1:population
+    particles = MPSOParticle[]
+    for i in 1:n_particles
         if lb === nothing || (all(isinf, lb) && all(isinf, ub))
             position = Array{eltype(prob.u0), 1}(undef, dim)
             for i in 1:dim
@@ -93,18 +92,18 @@ function init_particles(prob, population, ::CPU)
         else
             position = uniform(dim, lb, ub)
         end
-        velocity = zeros(dim)
-        cost = cost_func(position, data_dict)
+        velocity = zeros(eltype(position), dim)
+        cost = cost_func(position, prob.p)
         best_position = copy(position)
         best_cost = copy(cost)
-        push!(particles, Particle(position, velocity, cost, best_position, best_cost))
+        push!(particles, MPSOParticle(position, velocity, cost, best_position, best_cost))
 
         if best_cost < gbest.cost
             gbest.position = copy(best_position)
             gbest.cost = copy(best_cost)
         end
     end
-    return gbest, particles
+    return gbest, convert(Vector{typeof(particles[1])}, particles)
 end
 
 function check_init_bounds(prob)

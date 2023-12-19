@@ -13,7 +13,8 @@ function pso_solve(prob::OptimizationProblem,
         args...;
         kwargs...)
     backend = opt.backend
-    init_gbest, particles = init_particles(prob, opt.num_particles)
+    @assert prob.u0 isa SArray
+    init_gbest, particles = init_particles(prob, opt.num_particles, typeof(prob.u0))
     # TODO: Do the equivalent of cu()/roc()
     particles_eltype = eltype(particles) === Float64 ? Float32 : eltype(particles)
     gpu_particles = KernelAbstractions.allocate(backend,
@@ -23,12 +24,13 @@ function pso_solve(prob::OptimizationProblem,
     gpu_init_gbest = KernelAbstractions.allocate(backend, typeof(init_gbest), (1,))
     copyto!(gpu_init_gbest, [init_gbest])
 
-    if opt.global_update
-        gbest = pso_solve_async_gpu!(prob, gpu_init_gbest, gpu_particles; kwargs...)
-    else
-        gbest = vectorized_solve!(prob, gpu_init_gbest, gpu_particles, opt; kwargs...)
-    end
-
+    gbest = vectorized_solve!(prob,
+        gpu_init_gbest,
+        gpu_particles,
+        opt,
+        Val(opt.global_update),
+        args...;
+        kwargs...)
     gbest
 end
 
@@ -36,20 +38,14 @@ function pso_solve(prob::OptimizationProblem,
         opt::ParallelPSOArray,
         args...;
         kwargs...)
-    # if opt.threaded
-    gbest = PSO(prob; population = opt.num_particles, kwargs...)
-    # else
-    #     init_gbest, particles = init_particles(prob, opt.num_particles)
-    #     gbest = pso_solve_cpu!(prob, init_gbest, particles; kwargs...)
-    # end
-
+    init_gbest, particles = init_particles(prob, opt.num_particles, typeof(prob.u0))
+    gbest = vectorized_solve!(prob, init_gbest, particles, opt, args...; kwargs...)
     gbest
 end
 
 function pso_solve(prob::OptimizationProblem, opt::SerialPSO, args...; kwargs...)
-    init_gbest, particles = init_particles(prob, opt.num_particles)
-    gbest = pso_solve_cpu!(prob, init_gbest, particles; kwargs...)
-
+    init_gbest, particles = init_particles(prob, opt.num_particles, typeof(prob.u0))
+    gbest = vectorized_solve!(prob, init_gbest, particles, opt; kwargs...)
     gbest
 end
 
@@ -58,7 +54,7 @@ function pso_solve(prob::OptimizationProblem,
         args...;
         kwargs...)
     backend = opt.backend
-    init_gbest, particles = init_particles(prob, opt.num_particles)
+    init_gbest, particles = init_particles(prob, opt.num_particles, typeof(prob.u0))
     particles_eltype = eltype(particles) === Float64 ? Float32 : eltype(particles)
     gpu_particles = KernelAbstractions.allocate(backend, particles_eltype, size(particles))
     copyto!(gpu_particles, particles)
