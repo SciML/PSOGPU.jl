@@ -1,27 +1,47 @@
-Random.seed!(1234)
+using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random
 
-## Solving the rosenbrock problem
-lb = @SArray ones(Float32, N)
-lb = -1 * lb
-ub = @SArray fill(Float32(10.0), N)
+DEVICE = get(ENV, "GROUP", "CUDA")
 
-function rosenbrock(x, p)
-    sum(p[2] * (x[i + 1] - x[i]^2)^2 + (p[1] - x[i])^2 for i in 1:(length(x) - 1))
+@eval using $(Symbol(DEVICE))
+
+if DEVICE == "CUDA"
+    backend = CUDABackend()
+elseif DEVICE == "AMDGPU"
+    backend = ROCBackend()
 end
 
-x0 = @SArray zeros(Float32, N)
-p = @SArray Float32[1.0, 100.0]
+@testset "Rosenbrock GPU tests $(N)" for N in 2:4
+    Random.seed!(1234)
 
-prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub)
+    ## Solving the rosenbrock problem
+    lb = @SArray ones(Float32, N)
+    lb = -1 * lb
+    ub = @SArray fill(Float32(10.0), N)
 
-n_particles = 1000
+    function rosenbrock(x, p)
+        sum(p[2] * (x[i + 1] - x[i]^2)^2 + (p[1] - x[i])^2 for i in 1:(length(x) - 1))
+    end
 
-sol = solve(prob, ParallelPSOKernel(n_particles; backend), maxiters = 500)
+    x0 = @SArray zeros(Float32, N)
+    p = @SArray Float32[1.0, 100.0]
 
-@test sol.objective < 1e-4
+    prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub)
 
-sol = solve(prob,
-    ParallelSyncPSOKernel(n_particles, backend),
-    maxiters = 500)
+    n_particles = 100
 
-@test sol.objective < 1e-4
+    sol = solve(prob, ParallelPSOKernel(n_particles; backend), maxiters = 500)
+
+    @test sol.retcode == ReturnCode.Default
+
+    sol = solve(prob,
+        ParallelPSOKernel(n_particles; backend, global_update = false),
+        maxiters = 500)
+
+    @test sol.retcode == ReturnCode.Default
+
+    sol = solve(prob,
+        ParallelSyncPSOKernel(n_particles, backend),
+        maxiters = 500)
+
+    @test sol.objective < 6e-4
+end

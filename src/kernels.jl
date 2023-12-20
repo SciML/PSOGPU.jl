@@ -13,7 +13,6 @@
     update_pos = max.(particle.position, prob.lb)
     update_pos = min.(update_pos, prob.ub)
     @set! particle.position = update_pos
-    # @set! particle.position = min(particle.position, ub)
 
     @set! particle.cost = prob.f(particle.position, prob.p)
 

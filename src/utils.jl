@@ -109,5 +109,9 @@ end
 function check_init_bounds(prob)
     lb = prob.lb === nothing ? fill(eltype(prob.u0)(-Inf), length(prob.u0)) : prob.lb
     ub = prob.ub === nothing ? fill(eltype(prob.u0)(Inf), length(prob.u0)) : prob.ub
+    if prob.u0 isa SArray
+        lb = SVector{length(lb), eltype(lb)}(lb)
+        ub = SVector{length(ub), eltype(ub)}(ub)
+    end
     lb, ub
 end
