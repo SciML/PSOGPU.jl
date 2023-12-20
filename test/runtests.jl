@@ -1,22 +1,10 @@
-using PSOGPU
-using Test, StaticArrays, LinearAlgebra, Random
+using SafeTestsets
+using Test
 
 const GROUP = get(ENV, "GROUP", "CPU")
 
-@testset "Rosenbrock test dimension = $(n)" for n in 2:4
-    global N = n
-    include("./regression.jl")
-end
+@safetestset "Regression tests" include("./regression.jl")
 
 if GROUP != "CPU"
-    @eval using $(Symbol(GROUP))
-    if GROUP == "CUDA"
-        backend = CUDABackend()
-    elseif GROUP == "AMDGPU"
-        backend = ROCBackend()
-    end
-
-    @testset "Rosenbrock on gpu" begin
-        include("./gpu.jl")
-    end
+    @safetestset "GPU optimizers tests" include("./gpu.jl")
 end

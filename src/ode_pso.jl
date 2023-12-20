@@ -83,13 +83,13 @@ function parameter_estim_ode!(prob::ODEProblem,
         update_costs!(losses, gpu_particles; ndrange = length(losses))
 
         best_particle = minimum(gpu_particles,
-            init = PSOGPU.PSOParticle(gbest.position,
+            init = PSOGPU.SPSOParticle(gbest.position,
                 gbest.position,
                 gbest.cost,
                 gbest.position,
                 gbest.cost))
 
-        gbest = PSOGPU.PSOGBest(best_particle.best_position, best_particle.best_cost)
+        gbest = PSOGPU.SPSOGBest(best_particle.best_position, best_particle.best_cost)
         w = w * wdamp
     end
     return gbest
