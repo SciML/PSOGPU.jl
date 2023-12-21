@@ -29,6 +29,11 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: SArray}
     gbest_position = SVector{length(gbest_position), eltype(gbest_position)}(gbest_position)
     gbest_cost = cost_func(gbest_position, p)
     particles = SPSOParticle[]
+
+    if !(lb === nothing || (all(isinf, lb) && all(isinf, ub)))
+        positions = QuasiMonteCarlo.sample(n_particles, lb, ub, LatinHypercubeSample())
+    end
+
     for i in 1:n_particles
         if lb === nothing || (all(isinf, lb) && all(isinf, ub))
             position = Array{eltype(prob.u0), 1}(undef, dim)
@@ -40,7 +45,7 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: SArray}
                 end
             end
         else
-            position = uniform(dim, lb, ub)
+            position = @view positions[:, i]
         end
         position = SVector{length(position), eltype(position)}(position)
         velocity = @SArray zeros(eltype(position), dim)
@@ -63,6 +68,7 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: AbstractArray}
     lb = prob.lb
     ub = prob.ub
     cost_func = prob.f
+    p = prob.p
 
     if lb === nothing || (all(isinf, lb) && all(isinf, ub))
         gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
@@ -79,6 +85,11 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: AbstractArray}
     gbest = MPSOGBest(gbest_position, cost_func(gbest_position, prob.p))
 
     particles = MPSOParticle[]
+
+    if !(lb === nothing || (all(isinf, lb) && all(isinf, ub)))
+        positions = QuasiMonteCarlo.sample(n_particles, lb, ub, LatinHypercubeSample())
+    end
+
     for i in 1:n_particles
         if lb === nothing || (all(isinf, lb) && all(isinf, ub))
             position = Array{eltype(prob.u0), 1}(undef, dim)
@@ -90,7 +101,7 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: AbstractArray}
                 end
             end
         else
-            position = uniform(dim, lb, ub)
+            position = @view positions[:, i]
         end
         velocity = zeros(eltype(position), dim)
         cost = cost_func(position, prob.p)
