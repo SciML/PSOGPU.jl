@@ -1,64 +1,45 @@
-using ModelingToolkit, Optimization, PSOGPU
+using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random
 
-@variables x[1:2]
+DEVICE = get(ENV, "GROUP", "CUDA")
 
-obj = (x[1] - 2)^2 + (x[2] - 1)^2
+@eval using $(Symbol(DEVICE))
 
-cons = [
-    -x[1] + 2 * x[2] - 1 ≲ 1e-5,
-    +x[1] - 2 * x[2] + 1 ≲ 1e-5,
-    (x[1]^2) / 4 + x[2]^2 - 1 ≲ 1e-5,
-]
+if DEVICE == "CUDA"
+    backend = CUDABackend()
+elseif DEVICE == "AMDGPU"
+    backend = ROCBackend()
+end
 
-@named sys = OptimizationSystem(obj, x[1:2], [], constraints = cons)
+Random.seed!(1234)
 
-prob = OptimizationProblem(sys, [1.0, 1.0], lb = [0.0, 0.0], ub = [2.0, 2.0])
+objective(x, p) = (x[1] - p[1])^2 + (x[2] - p[2])^2
 
-using StaticArrays
+p = @SVector [2.0f0, 1.0f0]
 
-T1 = Float64
+function conss(x, p)
+    return SVector{3}(-x[1] + 2 * x[2] - 1, +x[1] - 2 * x[2] + 1, (x[1]^2) / 4 + x[2]^2 - 1)
+end
 
-opt_prob = remake(prob; u0 = SArray{Tuple{length(prob.u0)}, T1}(prob.u0),
-    p = prob.p isa SciMLBase.NullParameters || prob.p === nothing ? prob.p :
-        SArray{Tuple{length(prob.p)}, T1}(prob.p),
-    lb = SArray{Tuple{length(prob.lb)}, T1}(prob.lb),
-    ub = SArray{Tuple{length(prob.ub)}, T1}(prob.ub))
+opt_f = OptimizationFunction(objective, cons = conss)
 
-sol = solve(opt_prob,
-    ParallelPSOKernel(100; gpu = false, threaded = false),
-    maxiters = 1000)
+x0 = @SVector [1.0f0, 1.0f0]
+lb = @SVector [0.0f0, 0.0f0]
+ub = @SVector [2.0f0, 2.0f0]
+lcons = @SVector [-Inf32, -Inf32]
+ucons = @SVector [0.0f0, 0.0f0]
+prob = OptimizationProblem(opt_f, x0, p, lcons = lcons, ucons = ucons, lb = lb, ub = ub)
 
-########
+n_particles = 1000
 
-using ModelingToolkit, Optimization, PSOGPU
+backend = CUDABackend()
 
-@variables x[1:2]
+sol = solve(prob, ParallelSyncPSOKernel(n_particles; backend), maxiters = 500)
+@test sol.retcode == ReturnCode.Default
+@test abs(1 - 2 * sol.u[2] + sol.u[1]) < 1e-3
 
-obj = (x[1] - 10)^3 + (x[2] - 20)^3
+sol = solve(prob, ParallelPSOKernel(n_particles; backend), maxiters = 500)
+@test sol.retcode == ReturnCode.Default
+@test abs(1 - 2 * sol.u[2] + sol.u[1]) < 1e-3
 
-cons = [
-    100 - (x[1] - 5)^2 - (x[2] - 5)^2 ≲ 1e-5,
-    (x[1] - 6)^2 + (x[2] - 5)^2 - 82.81 ≲ 1e-5,
-]
-
-@named sys = OptimizationSystem(obj, x[1:2], [], constraints = cons)
-
-prob = OptimizationProblem(sys, [50.0, 50.0], lb = [13.0, 0.0], ub = [100.0, 100.0])
-
-using StaticArrays
-
-T1 = Float64
-
-opt_prob = remake(prob; u0 = SArray{Tuple{length(prob.u0)}, T1}(prob.u0),
-    p = prob.p isa SciMLBase.NullParameters || prob.p === nothing ? prob.p :
-        SArray{Tuple{length(prob.p)}, T1}(prob.p),
-    lb = SArray{Tuple{length(prob.lb)}, T1}(prob.lb),
-    ub = SArray{Tuple{length(prob.ub)}, T1}(prob.ub))
-
-init_gbest, particles = PSOGPU.init_particles(opt_prob, 100)
-
-gbest = PSOGPU.pso_solve_cpu!(opt_prob, init_gbest, particles; maxiters = 1000)
-
-sol = solve(opt_prob,
-    ParallelPSOKernel(1000; gpu = false, threaded = false),
-    maxiters = 1000)
+sol = solve(prob, SerialPSO(n_particles), maxiters = 500)
+@test sol.retcode == ReturnCode.Default

@@ -23,10 +23,13 @@ This is the price to be paid to fuse all the updates into a single kernel. Techn
 updates can be used to fix this.
 
 """
-struct ParallelPSOKernel{Backend} <: PSOAlogrithm
+struct ParallelPSOKernel{Backend, T, G, H} <: PSOAlogrithm
     num_particles::Int
     global_update::Bool
     backend::Backend
+    θ::T
+    γ::G
+    h::H
 end
 
 """
@@ -43,9 +46,12 @@ on a GPU. However, it requires a synchronization after each generation to calcul
 - backend: defaults to `CPU()`. The KernelAbstractions backend for performing the computation.
 
 """
-struct ParallelSyncPSOKernel{Backend} <: PSOAlogrithm
+struct ParallelSyncPSOKernel{Backend, T, G, H} <: PSOAlogrithm
     num_particles::Int
     backend::Backend
+    θ::T
+    γ::G
+    h::H
 end
 
 """
@@ -67,8 +73,11 @@ This is the price to be paid to fuse all the updates into a single kernel. Techn
 updates can be used to fix this.
 
 """
-struct ParallelPSOArray <: PSOAlogrithm
+struct ParallelPSOArray{T, G, H} <: PSOAlogrithm
     num_particles::Int
+    θ::T
+    γ::G
+    h::H
 end
 
 """
@@ -82,18 +91,30 @@ Serial Particle Swarm Optimization on a CPU.
 - num_particles: Number of particles in the simulation
 
 """
-struct SerialPSO <: PSOAlogrithm
+struct SerialPSO{T, G, H} <: PSOAlogrithm
     num_particles::Int
+    θ::T
+    γ::G
+    h::H
 end
 
 function ParallelPSOKernel(num_particles::Int;
-        global_update = true, backend = CPU())
-    ParallelPSOKernel(num_particles, global_update, backend)
+        global_update = true, backend = CPU(), θ = θ_default, γ = γ_default, h = sqrt)
+    ParallelPSOKernel(num_particles, global_update, backend, θ, γ, h)
 end
 
 function ParallelSyncPSOKernel(num_particles::Int;
-        backend = CPU())
-    ParallelSyncPSOKernel(num_particles, backend)
+        backend = CPU(), θ = θ_default, γ = γ_default, h = sqrt)
+    ParallelSyncPSOKernel(num_particles, backend, θ, γ, h)
+end
+
+function ParallelPSOArray(num_particles::Int; θ = θ_default, γ = γ_default, h = sqrt)
+    ParallelPSOArray(num_particles, θ, γ, h)
+end
+
+function SerialPSO(num_particles::Int; θ = θ_default, γ = γ_default, h = sqrt)
+    SerialPSO(num_particles, θ, γ, h)
 end
 
 SciMLBase.allowsbounds(::PSOAlogrithm) = true
+SciMLBase.allowsconstraints(::PSOAlogrithm) = true

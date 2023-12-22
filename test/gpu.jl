@@ -27,7 +27,7 @@ end
 
     prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub)
 
-    n_particles = 100
+    n_particles = 1000
 
     sol = solve(prob, ParallelPSOKernel(n_particles; backend), maxiters = 500)
 
