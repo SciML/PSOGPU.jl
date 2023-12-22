@@ -97,9 +97,9 @@ function vectorized_solve!(prob, gbest,
                     opt.θ,
                     opt.γ,
                     opt.h)
-                particles[i].cost = prob.f(particle.position, prob.p) + penalty
+                particles[i].cost = prob.f(particles[i].position, prob.p) + penalty
             else
-                particles[i].cost = prob.f(particle.position, prob.p)
+                particles[i].cost = prob.f(particles[i].position, prob.p)
             end
 
             if particles[i].cost < particles[i].best_cost
