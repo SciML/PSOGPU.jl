@@ -69,7 +69,7 @@ end
 @kernel function update_particle_states_async!(prob,
         gpu_particles,
         gbest_ref,
-        w, wdamp, maxiters;
+        w, wdamp, maxiters, opt;
         c1 = 1.4962f0,
         c2 = 1.4962f0)
     i = @index(Global, Linear)

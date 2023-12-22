@@ -7,8 +7,6 @@ function vectorized_solve!(prob,
         debug = false)
     backend = get_backend(gpu_particles)
 
-    @show gbest
-
     update_particle_kernel = update_particle_states!(backend)
 
     for i in 1:maxiters
@@ -58,7 +56,14 @@ function vectorized_solve!(prob,
     backend = get_backend(gpu_particles)
 
     kernel = update_particle_states_async!(backend)
-    kernel(prob, gpu_particles, gbest, w, wdamp, maxiters; ndrange = length(gpu_particles))
+    kernel(prob,
+        gpu_particles,
+        gbest,
+        w,
+        wdamp,
+        maxiters,
+        opt;
+        ndrange = length(gpu_particles))
 
     best_particle = minimum(gpu_particles)
     return SPSOGBest(best_particle.best_position, best_particle.best_cost)
