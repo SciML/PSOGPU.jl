@@ -6,12 +6,13 @@ function uniform(dim::Int, lb::AbstractArray{T}, ub::AbstractArray{T}) where {T}
     return arr
 end
 
-function init_particles(prob, n_particles, ::Type{T}) where {T <: SArray}
+function init_particles(prob, opt, ::Type{T}) where {T <: SArray}
     dim = length(prob.u0)
     lb = prob.lb
     ub = prob.ub
     cost_func = prob.f
     p = prob.p
+    num_particles = opt.num_particles
 
     if lb === nothing || (all(isinf, lb) && all(isinf, ub))
         gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
@@ -27,14 +28,20 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: SArray}
     end
 
     gbest_position = SVector{length(gbest_position), eltype(gbest_position)}(gbest_position)
-    gbest_cost = cost_func(gbest_position, p)
+    if !isnothing(prob.f.cons)
+        penalty = calc_penalty(gbest_position, prob, 1, opt.θ, opt.γ, opt.h)
+        gbest_cost = cost_func(gbest_position, p) + penalty
+    else
+        gbest_cost = cost_func(gbest_position, p)
+    end
+    # gbest_cost = cost_func(gbest_position, p)
     particles = SPSOParticle[]
 
     if !(lb === nothing || (all(isinf, lb) && all(isinf, ub)))
-        positions = QuasiMonteCarlo.sample(n_particles, lb, ub, LatinHypercubeSample())
+        positions = QuasiMonteCarlo.sample(num_particles, lb, ub, LatinHypercubeSample())
     end
 
-    for i in 1:n_particles
+    for i in 1:num_particles
         if lb === nothing || (all(isinf, lb) && all(isinf, ub))
             position = Array{eltype(prob.u0), 1}(undef, dim)
             for i in 1:dim
@@ -49,7 +56,14 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: SArray}
         end
         position = SVector{length(position), eltype(position)}(position)
         velocity = @SArray zeros(eltype(position), dim)
-        cost = cost_func(position, p)
+
+        if !isnothing(prob.f.cons)
+            penalty = calc_penalty(position, prob, 1, opt.θ, opt.γ, opt.h)
+            cost = cost_func(position, p) + penalty
+        else
+            cost = cost_func(position, p)
+        end
+
         best_position = position
         best_cost = cost
         push!(particles, SPSOParticle(position, velocity, cost, best_position, best_cost))
@@ -63,12 +77,13 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: SArray}
     return gbest, convert(Vector{typeof(particles[1])}, particles)
 end
 
-function init_particles(prob, n_particles, ::Type{T}) where {T <: AbstractArray}
+function init_particles(prob, opt, ::Type{T}) where {T <: AbstractArray}
     dim = length(prob.u0)
     lb = prob.lb
     ub = prob.ub
     cost_func = prob.f
     p = prob.p
+    num_particles = opt.num_particles
 
     if lb === nothing || (all(isinf, lb) && all(isinf, ub))
         gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
@@ -87,10 +102,10 @@ function init_particles(prob, n_particles, ::Type{T}) where {T <: AbstractArray}
     particles = MPSOParticle[]
 
     if !(lb === nothing || (all(isinf, lb) && all(isinf, ub)))
-        positions = QuasiMonteCarlo.sample(n_particles, lb, ub, LatinHypercubeSample())
+        positions = QuasiMonteCarlo.sample(num_particles, lb, ub, LatinHypercubeSample())
     end
 
-    for i in 1:n_particles
+    for i in 1:num_particles
         if lb === nothing || (all(isinf, lb) && all(isinf, ub))
             position = Array{eltype(prob.u0), 1}(undef, dim)
             for i in 1:dim
@@ -125,4 +140,56 @@ function check_init_bounds(prob)
         ub = SVector{length(ub), eltype(ub)}(ub)
     end
     lb, ub
+end
+
+@inline function θ_default(x::T) where {T <: Number}
+    if x < 0.001
+        return T(10.0)
+    elseif x <= 0.1
+        return T(20.0)
+    elseif x <= 1.0
+        return T(100.0)
+    else
+        return T(300.0)
+    end
+end
+
+@inline function γ_default(x::T) where {T <: Number}
+    if x < 1
+        return T(1)
+    else
+        return T(2)
+    end
+end
+
+"""
+Based on the paper: Particle swarm optimization method for constrained optimization problems
+
+@article{parsopoulos2002particle,
+  title={Particle swarm optimization method for constrained optimization problems},
+  author={Parsopoulos, Konstantinos E and Vrahatis, Michael N and others},
+  journal={Intelligent technologies--theory and application: New trends in intelligent technologies},
+  volume={76},
+  number={1},
+  pages={214--220},
+  year={2002}
+}
+"""
+@inline function calc_penalty(u,
+        prob::OptimizationProblem,
+        iter, θ, γ, h)
+    T = eltype(u)
+    cons_ret = prob.f.cons(u, prob.p)
+    q = max.(cons_ret, T(0))
+    thetaq = θ.(q)
+    gammaq = γ.(q)
+    penalty = T(0)
+    penalty = sum(thetaq)
+
+    for i in eachindex(thetaq)
+        @fastmath pen_pow = q[i]^gammaq[i]
+        penalty += thetaq[i] * pen_pow
+    end
+    penalty = h(T(iter)) * penalty
+    penalty
 end

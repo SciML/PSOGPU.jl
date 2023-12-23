@@ -56,7 +56,14 @@ function vectorized_solve!(prob,
     backend = get_backend(gpu_particles)
 
     kernel = update_particle_states_async!(backend)
-    kernel(prob, gpu_particles, gbest, w, wdamp, maxiters; ndrange = length(gpu_particles))
+    kernel(prob,
+        gpu_particles,
+        gbest,
+        w,
+        wdamp,
+        maxiters,
+        opt;
+        ndrange = length(gpu_particles))
 
     best_particle = minimum(gpu_particles)
     return SPSOGBest(best_particle.best_position, best_particle.best_cost)
@@ -88,7 +95,17 @@ function vectorized_solve!(prob, gbest,
             particles[i].position .= max.(particles[i].position, prob.lb)
             particles[i].position .= min.(particles[i].position, prob.ub)
 
-            particles[i].cost = cost_func(particles[i].position, prob.p)
+            if !isnothing(prob.f.cons)
+                penalty = calc_penalty(particles[i].position,
+                    prob,
+                    iter + 1,
+                    opt.θ,
+                    opt.γ,
+                    opt.h)
+                particles[i].cost = prob.f(particles[i].position, prob.p) + penalty
+            else
+                particles[i].cost = prob.f(particles[i].position, prob.p)
+            end
 
             if particles[i].cost < particles[i].best_cost
                 copy!(particles[i].best_position, particles[i].position)
@@ -106,13 +123,14 @@ function vectorized_solve!(prob, gbest,
     gbest
 end
 
-function update_particle_states_cpu!(prob, particles, gbest_ref, w; c1 = 1.4962f0,
+function update_particle_states_cpu!(prob, particles, gbest_ref, w, iter, opt;
+        c1 = 1.4962f0,
         c2 = 1.4962f0)
     gbest = gbest_ref[]
 
     for i in eachindex(particles)
         @inbounds particle = particles[i]
-        particle = update_particle_state(particle, prob, gbest, w, c1, c2)
+        particle = update_particle_state(particle, prob, gbest, w, c1, c2, iter, opt)
 
         if particle.best_cost < gbest.cost
             @set! gbest.position = particle.best_position
@@ -134,7 +152,7 @@ function vectorized_solve!(prob,
         debug = false)
     sol_ref = Ref(gbest)
     for i in 1:maxiters
-        update_particle_states_cpu!(prob, particles, sol_ref, w)
+        update_particle_states_cpu!(prob, particles, sol_ref, w, i, opt)
         w = w * wdamp
     end
     return sol_ref[]

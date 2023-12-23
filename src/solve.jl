@@ -5,7 +5,7 @@ function SciMLBase.__solve(prob::OptimizationProblem, opt::PSOAlogrithm, args...
     gbest = pso_solve(prob, opt, args...; kwargs...)
 
     SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
-        gbest.position, gbest.cost)
+        gbest.position, prob.f(gbest.position, prob.p))
 end
 
 function pso_solve(prob::OptimizationProblem,
@@ -14,7 +14,7 @@ function pso_solve(prob::OptimizationProblem,
         kwargs...)
     backend = opt.backend
     @assert prob.u0 isa SArray
-    init_gbest, particles = init_particles(prob, opt.num_particles, typeof(prob.u0))
+    init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
     # TODO: Do the equivalent of cu()/roc()
     particles_eltype = eltype(particles) === Float64 ? Float32 : eltype(particles)
     gpu_particles = KernelAbstractions.allocate(backend,
@@ -38,13 +38,13 @@ function pso_solve(prob::OptimizationProblem,
         opt::ParallelPSOArray,
         args...;
         kwargs...)
-    init_gbest, particles = init_particles(prob, opt.num_particles, typeof(prob.u0))
+    init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
     gbest = vectorized_solve!(prob, init_gbest, particles, opt, args...; kwargs...)
     gbest
 end
 
 function pso_solve(prob::OptimizationProblem, opt::SerialPSO, args...; kwargs...)
-    init_gbest, particles = init_particles(prob, opt.num_particles, typeof(prob.u0))
+    init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
     gbest = vectorized_solve!(prob, init_gbest, particles, opt; kwargs...)
     gbest
 end
@@ -54,7 +54,7 @@ function pso_solve(prob::OptimizationProblem,
         args...;
         kwargs...)
     backend = opt.backend
-    init_gbest, particles = init_particles(prob, opt.num_particles, typeof(prob.u0))
+    init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
     particles_eltype = eltype(particles) === Float64 ? Float32 : eltype(particles)
     gpu_particles = KernelAbstractions.allocate(backend, particles_eltype, size(particles))
     copyto!(gpu_particles, particles)
