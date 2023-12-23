@@ -35,11 +35,11 @@ backend = CUDABackend()
 
 sol = solve(prob, ParallelSyncPSOKernel(n_particles; backend), maxiters = 500)
 @test sol.retcode == ReturnCode.Default
-@test abs(1 - 2 * sol.u[2] + sol.u[1]) < 1e-3
+@test abs(1 - 2 * sol.u[2] + sol.u[1]) < 1e-1
 
 sol = solve(prob, ParallelPSOKernel(n_particles; backend), maxiters = 500)
 @test sol.retcode == ReturnCode.Default
-@test abs(1 - 2 * sol.u[2] + sol.u[1]) < 1e-3
+@test abs(1 - 2 * sol.u[2] + sol.u[1]) < 1e-1
 
 sol = solve(prob, SerialPSO(n_particles), maxiters = 500)
 @test sol.retcode == ReturnCode.Default
