@@ -22,7 +22,21 @@ p = Float32[1.0, 100.0]
 optf = OptimizationFunction(rosenbrock, Optimization.AutoZygote())
 prob = OptimizationProblem(optf, x0, p)
 
-sol = Optimization.solve(prob,
+@time sol = Optimization.solve(prob,
     PSOGPU.LBFGS(1e-3, 10),
     maxiters = 10
     )
+@show sol.objective
+
+@time sol = Optimization.solve(prob,
+    PSOGPU.ParallelPSOArray(100),
+    maxiters = 100,
+    )
+@show sol.objective
+
+@time sol = Optimization.solve(prob,
+    PSOGPU.HybridPSOLBFGS(pso = PSOGPU.ParallelPSOArray(30)),
+    EnsembleThreads(),
+    maxiters = 50,
+    )
+@show sol.objective

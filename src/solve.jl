@@ -1,11 +1,11 @@
-function SciMLBase.__solve(prob::OptimizationProblem, opt::PSOAlogrithm, args...; kwargs...)
+function SciMLBase.__solve(prob::OptimizationProblem, opt::PSOAlgorithm, args...; kwargs...)
     lb, ub = check_init_bounds(prob)
     prob = remake(prob; lb = lb, ub = ub)
 
-    gbest = pso_solve(prob, opt, args...; kwargs...)
-
+    gbest, particles = pso_solve(prob, opt, args...; kwargs...)
+    particles_positions = getfield.(particles, Ref(:position))
     SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
-        gbest.position, prob.f(gbest.position, prob.p))
+        gbest.position, prob.f(gbest.position, prob.p), original = particles_positions)
 end
 
 function pso_solve(prob::OptimizationProblem,
@@ -24,14 +24,14 @@ function pso_solve(prob::OptimizationProblem,
     gpu_init_gbest = KernelAbstractions.allocate(backend, typeof(init_gbest), (1,))
     copyto!(gpu_init_gbest, [init_gbest])
 
-    gbest = vectorized_solve!(prob,
+    gbest, particles = vectorized_solve!(prob,
         gpu_init_gbest,
         gpu_particles,
         opt,
         Val(opt.global_update),
         args...;
         kwargs...)
-    gbest
+    gbest, particles
 end
 
 function pso_solve(prob::OptimizationProblem,
@@ -39,14 +39,14 @@ function pso_solve(prob::OptimizationProblem,
         args...;
         kwargs...)
     init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
-    gbest = vectorized_solve!(prob, init_gbest, particles, opt, args...; kwargs...)
-    gbest
+    gbest, particles = vectorized_solve!(prob, init_gbest, particles, opt, args...; kwargs...)
+    gbest, particles
 end
 
 function pso_solve(prob::OptimizationProblem, opt::SerialPSO, args...; kwargs...)
     init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
-    gbest = vectorized_solve!(prob, init_gbest, particles, opt; kwargs...)
-    gbest
+    gbest, particles = vectorized_solve!(prob, init_gbest, particles, opt; kwargs...)
+    gbest, particles
 end
 
 function pso_solve(prob::OptimizationProblem,

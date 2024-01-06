@@ -43,13 +43,13 @@ function SciMLBase.__solve(cache::Optimization.OptimizationCache{
     P,
     C,
 }
-    if cache.data != Optimization.DEFAULT_DATA
-        maxiters = length(cache.data)
-        data = cache.data
-    else
-        maxiters = Optimization._check_and_convert_maxiters(cache.solver_args.maxiters)
-        data = Optimization.take(cache.data, maxiters)
-    end
+    # if cache.data != Optimization.DEFAULT_DATA
+    #     maxiters = length(cache.data)
+    #     data = cache.data
+    # else
+    #     maxiters = Optimization._check_and_convert_maxiters(cache.solver_args.maxiters)
+    #     data = Optimization.take(cache.data, maxiters)
+    # end
     
     _g = (G, θ, _p=nothing) -> cache.f.grad(G, θ)
     t0 = time()

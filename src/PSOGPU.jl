@@ -52,6 +52,7 @@ include("./kernels.jl")
 include("./lowerlevel_solve.jl")
 include("./solve.jl")
 include("./lbfgs.jl")
+include("./hybrid.jl")
 
 export ParallelPSOKernel,
     ParallelSyncPSOKernel, ParallelPSOArray, SerialPSO, OptimizationProblem, solve

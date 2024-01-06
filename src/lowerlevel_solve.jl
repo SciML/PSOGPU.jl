@@ -20,7 +20,7 @@ function vectorized_solve!(prob,
         w = w * wdamp
     end
 
-    return gbest
+    return gbest, gpu_particles
 end
 
 function vectorized_solve!(prob,
@@ -43,7 +43,7 @@ function vectorized_solve!(prob,
         w = w * wdamp
     end
 
-    return Array(gbest)[1]
+    return Array(gbest)[1], gpu_particles
 end
 
 function vectorized_solve!(prob,
@@ -66,7 +66,7 @@ function vectorized_solve!(prob,
         ndrange = length(gpu_particles))
 
     best_particle = minimum(gpu_particles)
-    return SPSOGBest(best_particle.best_position, best_particle.best_cost)
+    return SPSOGBest(best_particle.best_position, best_particle.best_cost), gpu_particles
 end
 
 function vectorized_solve!(prob, gbest,
@@ -120,7 +120,7 @@ function vectorized_solve!(prob, gbest,
         end
         w = w * wdamp
     end
-    gbest
+    gbest, particles
 end
 
 function update_particle_states_cpu!(prob, particles, gbest_ref, w, iter, opt;
@@ -155,5 +155,5 @@ function vectorized_solve!(prob,
         update_particle_states_cpu!(prob, particles, sol_ref, w, i, opt)
         w = w * wdamp
     end
-    return sol_ref[]
+    return sol_ref[], particles
 end
