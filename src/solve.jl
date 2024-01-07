@@ -1,14 +1,25 @@
-function SciMLBase.__solve(prob::OptimizationProblem, opt::PSOAlgorithm, args...; kwargs...)
-    lb, ub = check_init_bounds(prob)
-    prob = remake(prob; lb = lb, ub = ub)
+SciMLBase.supports_opt_cache_interface(::PSOAlgorithm) = true
 
-    gbest, particles = pso_solve(prob, opt, args...; kwargs...)
-    particles_positions = getfield.(particles, Ref(:position))
-    SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
-        gbest.position, prob.f(gbest.position, prob.p), original = particles_positions)
+function SciMLBase.__init(prob::OptimizationProblem, opt::PSOAlgorithm, data = Optimization.DEFAULT_DATA;
+        save_best = true,
+        callback = (args...) -> (false),
+        progress = false,
+        kwargs...)
+    
+    return Optimization.OptimizationCache(prob, opt, data; save_best, callback, progress, kwargs...)
 end
 
-function pso_solve(prob::OptimizationProblem,
+function SciMLBase.__solve(cache::Optimization.OptimizationCache{F, RC, LB, UB, LC, UC, S, O, D, P, C}) where {F, RC, LB, UB, LC, UC, S, O <: PSOAlgorithm, D, P, C}
+    lb, ub = check_init_bounds(cache)
+    @set! cache.lb = lb
+    @set! cache.ub = ub
+    gbest, particles = pso_solve(cache, cache.opt)
+    particles_positions = getfield.(particles, Ref(:position))
+    SciMLBase.build_solution(cache, cache.opt,
+        gbest.position, cache.f(gbest.position, cache.p), original = particles_positions)
+end
+
+function pso_solve(prob::Optimization.OptimizationCache,
         opt::ParallelPSOKernel,
         args...;
         kwargs...)
@@ -34,7 +45,7 @@ function pso_solve(prob::OptimizationProblem,
     gbest, particles
 end
 
-function pso_solve(prob::OptimizationProblem,
+function pso_solve(prob::Optimization.OptimizationCache,
         opt::ParallelPSOArray,
         args...;
         kwargs...)
@@ -43,13 +54,13 @@ function pso_solve(prob::OptimizationProblem,
     gbest, particles
 end
 
-function pso_solve(prob::OptimizationProblem, opt::SerialPSO, args...; kwargs...)
+function pso_solve(prob::Optimization.OptimizationCache, opt::SerialPSO, args...; kwargs...)
     init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
     gbest, particles = vectorized_solve!(prob, init_gbest, particles, opt; kwargs...)
     gbest, particles
 end
 
-function pso_solve(prob::OptimizationProblem,
+function pso_solve(prob::Optimization.OptimizationCache,
         opt::ParallelSyncPSOKernel,
         args...;
         kwargs...)

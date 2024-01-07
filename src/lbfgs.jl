@@ -17,7 +17,6 @@ function SciMLBase.__init(prob::SciMLBase.OptimizationProblem, opt::LBFGS,
         kwargs...)
 end
 
-
 function SciMLBase.__solve(cache::Optimization.OptimizationCache{
     F,
     RC,
@@ -43,20 +42,16 @@ function SciMLBase.__solve(cache::Optimization.OptimizationCache{
     P,
     C,
 }
-    # if cache.data != Optimization.DEFAULT_DATA
-    #     maxiters = length(cache.data)
-    #     data = cache.data
-    # else
-    #     maxiters = Optimization._check_and_convert_maxiters(cache.solver_args.maxiters)
-    #     data = Optimization.take(cache.data, maxiters)
-    # end
-    
+
     _g = (G, θ, _p=nothing) -> cache.f.grad(G, θ)
+    @show cache.u0
     t0 = time()
     nlprob = NonlinearProblem(NonlinearFunction(_g), cache.u0)
     nlsol = solve(nlprob, LimitedMemoryBroyden(; threshold = cache.opt.m, linesearch = LiFukushimaLineSearch()))
     t1 = time()
     θ = nlsol.u
+    @show nlsol.stats
+    @show nlsol.resid
 
     SciMLBase.build_solution(cache, cache.opt, θ, cache.f(θ, cache.p), solve_time = t1 - t0)
 end
