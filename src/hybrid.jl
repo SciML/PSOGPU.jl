@@ -17,13 +17,14 @@ function SciMLBase.__init(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLBF
         kwargs...)
 end
 
-@kernel function lbfgs_run!(nlcache, x0, result)
-    i = @index(Global, Linear)
+@kernel function lbfgs_run!(nlcache, x0, result, i)
+    # i = @index(Global, Linear)
     # @set! nlcache.u = x0
     nlcache = reinit!(nlcache, x0)
     @show nlcache.u
     res = solve!(nlcache)
     @show res
+    @show res.resid
     result[i] = res
 end
 
@@ -39,7 +40,8 @@ function SciMLBase.__solve(cache::Optimization.OptimizationCache{F, RC, LB, UB, 
     cache.ub = nothing
 
     if cache.u0 isa SVector
-        _g = (θ, _p = nothing) -> (G = KernelAbstractions.allocate(cache.opt.backend, eltype(cache.u0), size(cache.u0)); cache.f.grad(G, θ); return G) 
+        G = KernelAbstractions.allocate(cache.opt.backend, eltype(cache.u0), size(cache.u0));
+        _g = (θ, _p = nothing) -> (cache.f.grad(G, θ); return G)
     else
         _g = (G, θ, _p=nothing) -> cache.f.grad(G, θ)
     end
@@ -49,15 +51,15 @@ function SciMLBase.__solve(cache::Optimization.OptimizationCache{F, RC, LB, UB, 
     @show nlcache
     backend = lbfgsalg.backend
     kernel = lbfgs_run!(backend)
-    result = KernelAbstractions.allocate(lbfgsalg.backend, SciMLBase.NonlinearSolution, size(cache.u0))
-    for x0 in x0s
+    result = KernelAbstractions.allocate(lbfgsalg.backend, SciMLBase.NonlinearSolution, length(x0s))
+    for (i,x0) in enumerate(x0s)
         @show x0
-        kernel(nlcache, x0, result; ndrange = (1,))
+        kernel(nlcache, x0, result, i; ndrange = (1,))
     end
     # @show result
     t1 = time()
     @show result
-    sol_bfgs = [cache.f(θ, cache.p) for θ in getfield.(result, :u)]
+    sol_bfgs = [cache.f(θ, cache.p) for θ in getfield.(result, Ref(:u))]
     @show sol_bfgs
     minobj, ind = findmin(sol_bfgs)
 
