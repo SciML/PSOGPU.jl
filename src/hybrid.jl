@@ -3,7 +3,7 @@ struct HybridPSOLBFGS
     lbfgs::LBFGS
 end
 
-function HybridPSOLBFGS(; pso = PSOGPU.ParallelPSOKernel(100 ; global_update = false), lbfgs = LBFGS(1e-6, 10))
+function HybridPSOLBFGS(; pso = PSOGPU.ParallelPSOKernel(100 ; global_update = false), lbfgs = LBFGS())
     HybridPSOLBFGS(pso, lbfgs)
 end
 
@@ -17,7 +17,17 @@ function SciMLBase.__init(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLBF
         kwargs...)
 end
 
+@kernel function lbfgs_run!(nlcache, x0, result)
+    i = @index(Global, Linear)
+    @set! nlcache.u = x0
+    @show nlcache.u
+    res = solve!(nlcache)
+    @show res
+    result[i] = res
+end
+
 function SciMLBase.__solve(cache::Optimization.OptimizationCache{F, RC, LB, UB, LC, UC, S, O, D, P, C}) where {F, RC, LB, UB, LC, UC, S, O <: HybridPSOLBFGS, D, P, C}
+    t0 = time()
     psoalg = cache.opt.pso
     lbfgsalg = cache.opt.lbfgs
     @set! cache.opt = psoalg
@@ -27,15 +37,29 @@ function SciMLBase.__solve(cache::Optimization.OptimizationCache{F, RC, LB, UB, 
     cache.lb = nothing
     cache.ub = nothing
 
-    @set! cache.opt = lbfgsalg
-    cache_vector = map(x0s) do x0
-        reinit!(cache, u0 = x0)
+    if cache.u0 isa SVector
+        _g = (θ, _p = nothing) -> (G = KernelAbstractions.allocate(cache.opt.backend, eltype(cache.u0), size(cache.u0)); cache.f.grad(G, θ); return G) 
+    else
+        _g = (G, θ, _p=nothing) -> cache.f.grad(G, θ)
     end
-
-    sol_lbfgs = solve!.(cache_vector)
-
-    minobj, ind = findmin(i -> sol_lbfgs[i].objective, 1:length(sol_lbfgs))
+    # @show cache.u0
+    nlprob = NonlinearProblem(NonlinearFunction(_g), cache.u0)
+    nlcache = init(nlprob, LimitedMemoryBroyden(; threshold = lbfgsalg.m, linesearch = LiFukushimaLineSearch()))
+    @show nlcache
+    backend = lbfgsalg.backend
+    kernel = lbfgs_run!(backend)
+    result = KernelAbstractions.allocate(lbfgsalg.backend, SciMLBase.NonlinearSolution, size(cache.u0))
+    for x0 in x0s
+        @show x0
+        kernel(nlcache, x0, result; ndrange = (1,))
+    end
+    # @show result
+    t1 = time()
+    @show result
+    sol_bfgs = [cache.f(θ, cache.p) for θ in getfield.(result, :u)]
+    @show sol_bfgs
+    minobj, ind = findmin(sol_bfgs)
 
     SciMLBase.build_solution(cache, cache.opt,
-        sol_lbfgs[ind].u, minobj)
+        result[ind].u, minobj)
 end

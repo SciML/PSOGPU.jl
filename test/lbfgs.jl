@@ -10,7 +10,7 @@ x0 = zeros(2) .+ 1
 prob = OptimizationProblem(optprob, x0)
 l1 = objf(x0, nothing)
 sol = Optimization.solve(prob,
-    PSOGPU.LBFGS(1e-16, 10),
+    PSOGPU.LBFGS(),
     maxiters = 10)
 
 N = 10
@@ -21,9 +21,11 @@ x0 = rand(Float32, N)
 p = Float32[1.0, 100.0]
 optf = OptimizationFunction(rosenbrock, Optimization.AutoZygote())
 prob = OptimizationProblem(optf, x0, p)
+l0 = rosenbrock(x0, p)
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.LBFGS(1e-6, 10),
+    PSOGPU.LBFGS(),
+    maxiters = 100,
     )
 @show sol.objective
 
@@ -34,7 +36,7 @@ prob = OptimizationProblem(optf, x0, p)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSOLBFGS(pso = PSOGPU.ParallelPSOArray(20)),
+    PSOGPU.HybridPSOLBFGS(pso = PSOGPU.ParallelPSOKernel(30)),
     EnsembleThreads(),
     maxiters = 100,
     )
