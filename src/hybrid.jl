@@ -19,7 +19,8 @@ end
 
 @kernel function lbfgs_run!(nlcache, x0, result)
     i = @index(Global, Linear)
-    @set! nlcache.u = x0
+    # @set! nlcache.u = x0
+    nlcache = reinit!(nlcache, x0)
     @show nlcache.u
     res = solve!(nlcache)
     @show res
