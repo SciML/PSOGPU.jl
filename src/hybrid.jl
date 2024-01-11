@@ -26,7 +26,8 @@ end
 @kernel function simplebfgs_run!(nlprob, x0s, result, maxiters)
     i = @index(Global, Linear)
     nlcache = remake(nlprob; u0 = x0s[i])
-    result[i] = solve(nlcache, SimpleBroyden(; linesearch = Val(true)), maxiters = maxiters).u
+    sol = solve(nlcache, SimpleBroyden(; linesearch = Val(true)), maxiters = maxiters)
+    result[i] = sol.u
 end
 
 function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLBFGS, args...; maxiters = 1000, kwargs...)
@@ -42,8 +43,10 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLB
     prob = remake(prob, lb = nothing, ub = nothing)
     @show length(x0s)
     # f = Optimization.instantiate_function(prob.f, prob.u0, prob.f.adtype, prob.p, 0)
-
-    _g = (θ, _p = nothing) -> ForwardDiff.gradient(x -> prob.f(x, prob.p), θ) 
+    f = Base.Fix2(prob.f.f, prob.p)
+    function _g(θ, _p = nothing) 
+        return ForwardDiff.gradient(f , θ) 
+    end
     # @show prob.u0
     # nlcaches = [init(NonlinearProblem(NonlinearFunction(_g), x0), LimitedMemoryBroyden(; threshold = lbfgsalg.m, linesearch = LiFukushimaLineSearch())) 
     #     for x0 in x0s
@@ -62,8 +65,9 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLB
     # kernel(nlprob, x0s, result; ndrange = length(x0s))
 
     kernel = simplebfgs_run!(backend)
-    result = KernelAbstractions.allocate(backend, eltype(x0s), length(x0s))
+    result = KernelAbstractions.allocate(backend, typeof(prob.u0), length(x0s))
     nlprob = NonlinearProblem(NonlinearFunction(_g), prob.u0)
+
     kernel(nlprob, x0s, result, maxiters; ndrange = length(x0s))
 
     # @show result
