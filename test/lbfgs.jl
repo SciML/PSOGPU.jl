@@ -1,5 +1,5 @@
-using PSOGPU, Optimization
-using Zygote, StaticArrays
+using PSOGPU, Optimization, CUDA
+using Zygote, StaticArrays, KernelAbstractions
 
 function objf(x, p)
     return x[1]^2 + x[2]^2
@@ -10,34 +10,34 @@ x0 = zeros(2) .+ 1
 prob = OptimizationProblem(optprob, x0)
 l1 = objf(x0, nothing)
 sol = Optimization.solve(prob,
-    PSOGPU.LBFGS(),
+    PSOGPU.LBFGS(;backend = CUDABackend()),
     maxiters = 10)
 
-N = 10
+N = 4
 function rosenbrock(x, p)
     sum(p[2] * (x[i + 1] - x[i]^2)^2 + (p[1] - x[i])^2 for i in 1:(length(x) - 1))
 end
-x0 = rand(Float32, N)
-p = Float32[1.0, 100.0]
+x0 = @SArray rand(Float32, N)
+p = @SArray  Float32[1.0, 100.0]
 optf = OptimizationFunction(rosenbrock, Optimization.AutoZygote())
 prob = OptimizationProblem(optf, x0, p)
 l0 = rosenbrock(x0, p)
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.LBFGS(),
+    PSOGPU.LBFGS(; backend = CUDABackend()),
+    maxiters = 13,
+    )
+@show sol.objective
+
+@time sol = Optimization.solve(prob,
+    PSOGPU.ParallelPSOKernel(100, backend = CUDABackend()),
     maxiters = 100,
     )
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.ParallelPSOArray(100),
-    maxiters = 100,
-    )
-@show sol.objective
-
-@time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSOLBFGS(pso = PSOGPU.ParallelPSOKernel(30)),
+    PSOGPU.HybridPSOLBFGS(pso = PSOGPU.ParallelPSOKernel(30), lbfgs = PSOGPU.LBFGS(; backend = CUDABackend())),
     EnsembleThreads(),
-    maxiters = 100,
+    maxiters = 10,
     )
 @show sol.objective

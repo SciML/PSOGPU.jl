@@ -7,16 +7,6 @@ function HybridPSOLBFGS(; pso = PSOGPU.ParallelPSOKernel(100 ; global_update = f
     HybridPSOLBFGS(pso, lbfgs)
 end
 
-SciMLBase.supports_opt_cache_interface(opt::HybridPSOLBFGS) = true
-
-function SciMLBase.__init(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLBFGS,
-    data = Optimization.DEFAULT_DATA; save_best = true,
-    callback = (args...) -> (false),
-    progress = false, kwargs...)
-    return Optimization.OptimizationCache(prob, opt, data; save_best, callback, progress,
-        kwargs...)
-end
-
 @kernel function lbfgs_run!(nlcaches, x0s, result)
     i = @index(Global, Linear)
     # nlcache = reinit!(nlcaches[i], x0s[i])
@@ -33,30 +23,32 @@ end
     result[i] = solve(nlcache, SimpleLimitedMemoryBroyden(; threshold = 10))
 end
 
-@kernel function simplebfgs_run!(nlprob, x0s, result)
+@kernel function simplebfgs_run!(nlprob, x0s, result, maxiters)
     i = @index(Global, Linear)
     nlcache = remake(nlprob; u0 = x0s[i])
-    result[i] = solve(nlcache, SimpleBroyden())
+    result[i] = solve(nlcache, SimpleBroyden(; linesearch = Val(true)), maxiters = maxiters).u
 end
 
-function SciMLBase.__solve(cache::Optimization.OptimizationCache{F, RC, LB, UB, LC, UC, S, O, D, P, C}) where {F, RC, LB, UB, LC, UC, S, O <: HybridPSOLBFGS, D, P, C}
+function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLBFGS, args...; maxiters = 1000, kwargs...)
     t0 = time()
-    psoalg = cache.opt.pso
-    lbfgsalg = cache.opt.lbfgs
-    @set! cache.opt = psoalg
-    sol_pso = solve!(cache)
+    psoalg = opt.pso
+    lbfgsalg = opt.lbfgs
+    
+    sol_pso = solve(prob, psoalg, args...; maxiters, kwargs...)
 
     x0s = sol_pso.original
-    cache.lb = nothing
-    cache.ub = nothing
+    @show prob.u0
+    @show x0s
+    prob = remake(prob, lb = nothing, ub = nothing)
     @show length(x0s)
-    if cache.u0 isa SVector
-        G = KernelAbstractions.allocate(cache.opt.backend, eltype(cache.u0), size(cache.u0));
-        _g = (θ, _p = nothing) -> (cache.f.grad(G, θ); return G)
+    f = Optimization.instantiate_function(prob.f, prob.u0, prob.f.adtype, prob.p, 0)
+    if prob.u0 isa SVector
+        G = KernelAbstractions.allocate(lbfgsalg.backend, eltype(prob.u0), size(prob.u0))
+        _g = (θ, _p = nothing) -> f.grad(G, θ) 
     else
-        _g = (G, θ, _p=nothing) -> cache.f.grad(G, θ)
+        _g = (G, θ, _p=nothing) -> f.grad(G, θ)
     end
-    # @show cache.u0
+    # @show prob.u0
     # nlcaches = [init(NonlinearProblem(NonlinearFunction(_g), x0), LimitedMemoryBroyden(; threshold = lbfgsalg.m, linesearch = LiFukushimaLineSearch())) 
     #     for x0 in x0s
     # ]
@@ -70,21 +62,21 @@ function SciMLBase.__solve(cache::Optimization.OptimizationCache{F, RC, LB, UB, 
 
     # kernel = simplelbfgs_run!(backend)
     # result = KernelAbstractions.allocate(backend, SciMLBase.NonlinearSolution, length(x0s))
-    # nlprob = NonlinearProblem(NonlinearFunction(_g), cache.u0)
+    # nlprob = NonlinearProblem(NonlinearFunction(_g), prob.u0)
     # kernel(nlprob, x0s, result; ndrange = length(x0s))
 
     kernel = simplebfgs_run!(backend)
-    result = KernelAbstractions.allocate(backend, SciMLBase.NonlinearSolution, length(x0s))
-    nlprob = NonlinearProblem(NonlinearFunction(_g), cache.u0)
-    kernel(nlprob, x0s, result; ndrange = length(x0s))
+    result = KernelAbstractions.allocate(backend, eltype(x0s), length(x0s))
+    nlprob = NonlinearProblem(NonlinearFunction(_g), prob.u0)
+    kernel(nlprob, x0s, result, maxiters; ndrange = length(x0s))
 
     # @show result
     t1 = time()
     @show result
-    sol_bfgs = [cache.f(θ, cache.p) for θ in getfield.(result, Ref(:u))]
+    sol_bfgs = [prob.f(θ, prob.p) for θ in getfield.(result, Ref(:u))]
     @show sol_bfgs
     minobj, ind = findmin(x -> isnan(x) ? Inf : x ,sol_bfgs)
 
-    SciMLBase.build_solution(cache, cache.opt,
+    SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p),
         result[ind].u, minobj)
 end

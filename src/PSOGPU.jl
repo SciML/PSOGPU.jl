@@ -1,7 +1,8 @@
 module PSOGPU
 
 using SciMLBase, StaticArrays, Setfield, KernelAbstractions
-using QuasiMonteCarlo, Optimization, NonlinearSolve
+using QuasiMonteCarlo, Optimization, SimpleNonlinearSolve
+import Adapt
 
 # import DiffEqGPU: GPUTsit5, vectorized_asolve, make_prob_compatible
 
