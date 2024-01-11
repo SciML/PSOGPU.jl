@@ -37,9 +37,10 @@ function vectorized_solve!(prob,
 
     kernel = update_particle_states!(backend)
 
+    lock = KernelAbstractions.allocate(backend, Int32, 1)
     for i in 1:maxiters
         ## Invoke GPU Kernel here
-        kernel(prob, gpu_particles, gbest, w, opt; ndrange = length(gpu_particles))
+        kernel(prob, gpu_particles, gbest, w, opt, lock; ndrange = length(gpu_particles))
         w = w * wdamp
     end
 

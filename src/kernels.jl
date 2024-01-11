@@ -33,25 +33,55 @@ end
     particle
 end
 
-@kernel function update_particle_states!(prob, gpu_particles, gbest_ref, w,
-        opt::ParallelPSOKernel; c1 = 1.4962f0,
-        c2 = 1.4962f0)
+@kernel function update_particle_states!(prob, gpu_particles::AbstractArray{SPSOParticle{T1,T2}}, gbest_ref, w,
+        opt::ParallelPSOKernel, lock; c1 = 1.4962f0,
+        c2 = 1.4962f0) where {T1,T2}
     i = @index(Global, Linear)
+    # FIXME: Determine the right amount of shmem to use
+    best_queue = @localmem SPSOGBest{T1,T2} 1024
+    queue_num = @localmem UInt32 1
 
     @inbounds gbest = gbest_ref[1]
     @inbounds particle = gpu_particles[i]
 
     particle = update_particle_state(particle, prob, gbest, w, c1, c2, i, opt)
+    @inbounds gpu_particles[i] = particle
 
-    ## NOTE: This causes thread races to update global best particle.
+    @synchronize
+
     if particle.best_cost < gbest.cost
-        @set! gbest.position = particle.best_position
-        @set! gbest.cost = particle.best_cost
+        queue_idx = @atomic queue_num[1] += UInt32(1)
+        @inbounds best_queue[queue_idx] = SPSOGBest(particle.best_position,
+                                                    particle.best_cost)
     end
 
-    @inbounds gbest_ref[1] = gbest
+    @synchronize
 
-    @inbounds gpu_particles[i] = particle
+    if i <= first(@ndrange())
+        tidx = @index(Local, Linear)
+        if tidx == 1
+            if queue_num[1] > 1
+                # Find best fit in block
+                for j in 2:queue_num[1]
+                    @inbounds if best_queue[j].cost < best_queue[1].cost
+                        best_queue[1] = best_queue[j]
+                    end
+                end
+
+                # Take lock
+                #while !(@atomicreplace lock[1] 0=>1).success end
+
+                # Update global best fit
+                gbest = @inbounds gbest_ref[1]
+                @inbounds if best_queue[1].cost < gbest.cost
+                    gbest_ref[1] = best_queue[1]
+                end
+
+                # Release lock
+                @atomicswap lock[1] = 0
+            end
+        end
+    end
 end
 
 @kernel function update_particle_states!(prob, gpu_particles, gbest, w,
