@@ -41,13 +41,9 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLB
     @show x0s
     prob = remake(prob, lb = nothing, ub = nothing)
     @show length(x0s)
-    f = Optimization.instantiate_function(prob.f, prob.u0, prob.f.adtype, prob.p, 0)
-    if prob.u0 isa SVector
-        G = KernelAbstractions.allocate(lbfgsalg.backend, eltype(prob.u0), size(prob.u0))
-        _g = (θ, _p = nothing) -> f.grad(G, θ) 
-    else
-        _g = (G, θ, _p=nothing) -> f.grad(G, θ)
-    end
+    # f = Optimization.instantiate_function(prob.f, prob.u0, prob.f.adtype, prob.p, 0)
+
+    _g = (θ, _p = nothing) -> ForwardDiff.gradient(x -> prob.f(x, prob.p), θ) 
     # @show prob.u0
     # nlcaches = [init(NonlinearProblem(NonlinearFunction(_g), x0), LimitedMemoryBroyden(; threshold = lbfgsalg.m, linesearch = LiFukushimaLineSearch())) 
     #     for x0 in x0s
@@ -75,6 +71,7 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLB
     @show result
     sol_bfgs = [prob.f(θ, prob.p) for θ in getfield.(result, Ref(:u))]
     @show sol_bfgs
+
     minobj, ind = findmin(x -> isnan(x) ? Inf : x ,sol_bfgs)
 
     SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p),

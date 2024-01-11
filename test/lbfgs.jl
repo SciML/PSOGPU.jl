@@ -19,7 +19,7 @@ function rosenbrock(x, p)
 end
 x0 = @SArray rand(Float32, N)
 p = @SArray  Float32[1.0, 100.0]
-optf = OptimizationFunction(rosenbrock, Optimization.AutoZygote())
+optf = OptimizationFunction(rosenbrock, Optimization.AutoEnzyme())
 prob = OptimizationProblem(optf, x0, p)
 l0 = rosenbrock(x0, p)
 
@@ -36,7 +36,7 @@ l0 = rosenbrock(x0, p)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSOLBFGS(pso = PSOGPU.ParallelPSOKernel(30), lbfgs = PSOGPU.LBFGS(; backend = CUDABackend())),
+    PSOGPU.HybridPSOLBFGS(pso = PSOGPU.ParallelPSOKernel(30, backend = CUDABackend()), lbfgs = PSOGPU.LBFGS(; backend = CUDABackend())),
     EnsembleThreads(),
     maxiters = 10,
     )

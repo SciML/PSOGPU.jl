@@ -1,10 +1,14 @@
+function get_pos(particle)
+    return particle.position
+end
+
 function SciMLBase.__solve(prob::OptimizationProblem, opt::PSOAlgorithm, args...; kwargs...)
     lb, ub = check_init_bounds(prob)
     lb, ub = check_init_bounds(prob)
     prob = remake(prob; lb = lb, ub = ub)
 
     gbest, particles = pso_solve(prob, opt)
-    particles_positions = getfield.(particles, Ref(:position))
+    particles_positions = get_pos.(particles)
     SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
         gbest.position, prob.f(gbest.position, prob.p), original = particles_positions)
 end
