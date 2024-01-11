@@ -11,7 +11,7 @@ function SciMLBase.__solve(prob::OptimizationProblem,
     lb, ub = check_init_bounds(prob)
     prob = remake(prob; lb = lb, ub = ub)
 
-    gbest, particles = pso_solve(prob, opt, args...; maxiters, kwargs...)
+    gbest, particles, solve_time = pso_solve(prob, opt, args...; maxiters, kwargs...)
     particles_positions = get_pos.(particles)
     SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
         gbest.position, prob.f(gbest.position, prob.p), original = particles_positions, stats = Optimization.OptimizationStats(; time = solve_time))
