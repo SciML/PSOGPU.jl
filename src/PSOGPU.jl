@@ -4,6 +4,9 @@ using SciMLBase, StaticArrays, Setfield, KernelAbstractions
 using QuasiMonteCarlo, Optimization, SimpleNonlinearSolve, ForwardDiff
 import Adapt
 import Enzyme: autodiff_deferred, Active, Reverse
+import KernelAbstractions: @atomic, @atomicreplace, @atomicswap
+using QuasiMonteCarlo
+
 import DiffEqGPU: GPUTsit5, vectorized_asolve, make_prob_compatible
 
 ## Use lb and ub either as StaticArray or pass them separately as CuArrays
