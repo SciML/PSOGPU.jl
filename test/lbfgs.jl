@@ -2,16 +2,17 @@ using PSOGPU, Optimization, CUDA
 using Zygote, StaticArrays, KernelAbstractions
 
 function objf(x, p)
-    return x[1]^2 + x[2]^2
+    return 1 - x[1]^2 - x[2]^2 
 end
 
 optprob = OptimizationFunction(objf, Optimization.AutoZygote())
-x0 = zeros(2) .+ 1
+x0 = rand(2)
+x0 = SVector{2}(x0) 
 prob = OptimizationProblem(optprob, x0)
 l1 = objf(x0, nothing)
-sol = Optimization.solve(prob,
-    PSOGPU.LBFGS(;backend = CUDABackend()),
-    maxiters = 10)
+# sol = Optimization.solve(prob,
+#     PSOGPU.LBFGS(;backend = CUDABackend()),
+#     maxiters = 10)
 
 N = 4
 function rosenbrock(x, p)
@@ -19,15 +20,15 @@ function rosenbrock(x, p)
 end
 x0 = @SArray rand(Float32, N)
 p = @SArray  Float32[1.0, 100.0]
-optf = OptimizationFunction(rosenbrock, Optimization.AutoEnzyme())
+optf = OptimizationFunction(rosenbrock, Optimization.AutoForwardDiff())
 prob = OptimizationProblem(optf, x0, p)
 l0 = rosenbrock(x0, p)
 
-@time sol = Optimization.solve(prob,
-    PSOGPU.LBFGS(; backend = CUDABackend()),
-    maxiters = 13,
-    )
-@show sol.objective
+# @time sol = Optimization.solve(prob,
+#     PSOGPU.LBFGS(; backend = CUDABackend()),
+#     maxiters = 13,
+#     )
+# @show sol.objective
 
 @time sol = Optimization.solve(prob,
     PSOGPU.ParallelPSOKernel(100, backend = CUDABackend()),
@@ -36,8 +37,8 @@ l0 = rosenbrock(x0, p)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSOLBFGS(pso = PSOGPU.ParallelPSOKernel(30, backend = CUDABackend()), lbfgs = PSOGPU.LBFGS(; backend = CUDABackend())),
+    PSOGPU.HybridPSOLBFGS(pso = PSOGPU.ParallelPSOKernel(100; backend = CUDABackend()), lbfgs = PSOGPU.LBFGS(; backend = CUDABackend())),
     EnsembleThreads(),
-    maxiters = 10,
+    maxiters = 30,
     )
 @show sol.objective

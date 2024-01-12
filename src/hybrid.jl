@@ -26,7 +26,7 @@ end
 @kernel function simplebfgs_run!(nlprob, x0s, result, maxiters)
     i = @index(Global, Linear)
     nlcache = remake(nlprob; u0 = x0s[i])
-    sol = solve(nlcache, SimpleBroyden(; linesearch = Val(true)), maxiters = maxiters)
+    sol = SciMLBase.__solve(nlcache, SimpleBroyden(; linesearch = Val(true)), maxiters = maxiters)
     result[i] = sol.u
 end
 
@@ -66,18 +66,18 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLB
 
     kernel = simplebfgs_run!(backend)
     result = KernelAbstractions.allocate(backend, typeof(prob.u0), length(x0s))
-    nlprob = NonlinearProblem(NonlinearFunction(_g), prob.u0)
+    nlprob = NonlinearProblem{false}(_g, prob.u0)
 
     kernel(nlprob, x0s, result, maxiters; ndrange = length(x0s))
 
     # @show result
     t1 = time()
     @show result
-    sol_bfgs = [prob.f(θ, prob.p) for θ in getfield.(result, Ref(:u))]
+    sol_bfgs = [prob.f(θ, prob.p) for θ in result]
     @show sol_bfgs
 
     minobj, ind = findmin(x -> isnan(x) ? Inf : x ,sol_bfgs)
 
-    SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p),
-        result[ind].u, minobj)
+    SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
+        result[ind], minobj)
 end

@@ -8,20 +8,26 @@ function LBFGS(; ϵ = 1e-8, m = 10, backend = CPU())
     LBFGS(ϵ, m, backend)
 end
 
+@kernel function solve_lbfgs(nlprob::NonlinearProblem, opt, result, maxiters = 1000)
+    result .= SciMLBase.__solve(nlprob, opt; maxiters = maxiters).u
+end
+
 function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::LBFGS, args...; maxiters = 1000, kwargs...)
-    f = Optimization.instantiate_function(prob.f, prob.u0, prob.f.adtype, prob.p, 0)
-    if prob.u0 isa SVector
-        G = KernelAbstractions.allocate(opt.backend, eltype(prob.u0), size(prob.u0))
-        _g = (θ, _p = nothing) -> f.grad(G, θ) 
-    else
-        _g = (G, θ, _p=nothing) -> f.grad(G, θ)
+    f = Base.Fix2(prob.f.f, prob.p)
+
+    function _g(θ, _p = nothing) 
+        return ForwardDiff.gradient(f , θ) 
     end
+
+    kernel = solve_lbfgs(opt.backend) 
     # @show cache.u0
     t0 = time()
-    nlprob = NonlinearProblem(NonlinearFunction(_g), prob.u0)
-    nlsol = solve(nlprob, SimpleLimitedMemoryBroyden(; threshold = opt.m, linesearch = Val(true)), maxiters = maxiters)
+    result = KernelAbstractions.allocate(opt.backend, eltype(prob.u0), size(prob.u0))
+
+    nlprob = NonlinearProblem{false}(_g, prob.u0)
+    nlsol = kernel(nlprob, SimpleBroyden(; linesearch = Val(true)), result, maxiters; ndrange = (1,))
     t1 = time()
-    θ = nlsol.u
+    θ = result
     # @show nlsol.stats
     # @show nlsol.resid
 
