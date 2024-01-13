@@ -1,13 +1,14 @@
 using PSOGPU, Optimization, CUDA
 using Zygote, StaticArrays, KernelAbstractions
+using Optimization
 
 function objf(x, p)
-    return 1 - x[1]^2 - x[2]^2 
+    return 1 - x[1]^2 - x[2]^2
 end
 
 optprob = OptimizationFunction(objf, Optimization.AutoZygote())
 x0 = rand(2)
-x0 = SVector{2}(x0) 
+x0 = SVector{2}(x0)
 prob = OptimizationProblem(optprob, x0)
 l1 = objf(x0, nothing)
 # sol = Optimization.solve(prob,
@@ -29,7 +30,6 @@ l0 = rosenbrock(x0, p)
 #     maxiters = 13,
 #     )
 # @show sol.objective
-
 @time sol = Optimization.solve(prob,
     PSOGPU.ParallelPSOKernel(100, backend = CUDABackend()),
     maxiters = 100,

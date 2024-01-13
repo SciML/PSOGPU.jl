@@ -6,6 +6,7 @@ version = "1.0.0-DEV"
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 MLDatasets = "eb30cadb-4394-5ae3-aed4-317e484a6458"
 NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
