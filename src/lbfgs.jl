@@ -25,7 +25,7 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::LBFGS, args
     result = KernelAbstractions.allocate(opt.backend, eltype(prob.u0), size(prob.u0))
 
     nlprob = NonlinearProblem{false}(_g, prob.u0)
-    nlsol = kernel(nlprob, SimpleBroyden(; linesearch = Val(true)), result, maxiters; ndrange = (1,))
+    nlsol = kernel(nlprob, SimpleLimitedMemoryBroyden(; threshold = opt.m, linesearch = Val(true)), result, maxiters; ndrange = (1,))
     t1 = time()
     θ = result
     # @show nlsol.stats

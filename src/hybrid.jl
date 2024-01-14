@@ -23,10 +23,10 @@ end
     result[i] = solve(nlcache, SimpleLimitedMemoryBroyden(; threshold = 10))
 end
 
-@kernel function simplebfgs_run!(nlprob, x0s, result, maxiters)
+@kernel function simplebfgs_run!(nlprob, x0s, result, opt, maxiters)
     i = @index(Global, Linear)
     nlcache = remake(nlprob; u0 = x0s[i])
-    sol = SciMLBase.__solve(nlcache, SimpleBroyden(), maxiters = maxiters, abstol = 1f-6, reltol = 1f-6)
+    sol = SciMLBase.__solve(nlcache, opt, maxiters = maxiters, abstol = 1f-6, reltol = 1f-6)
     result[i] = sol.u
 end
 
@@ -37,13 +37,13 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLB
 
     sol_pso = solve(prob, psoalg, args...; maxiters, kwargs...)
 
-    @show sol_pso.u
+    # @show sol_pso.u
 
     x0s = sol_pso.original
     # @show prob.u0
     # @show x0s
     prob = remake(prob, lb = nothing, ub = nothing)
-    @show length(x0s)
+    # @show length(x0s)
     # f = Optimization.instantiate_function(prob.f, prob.u0, prob.f.adtype, prob.p, 0)
     f = Base.Fix2(prob.f.f, prob.p)
     function _g(θ, _p = nothing)
@@ -70,7 +70,7 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLB
     result = KernelAbstractions.allocate(backend, typeof(prob.u0), length(x0s))
     nlprob = NonlinearProblem{false}(_g, prob.u0)
 
-    kernel(nlprob, x0s, result, maxiters; ndrange = length(x0s))
+    kernel(nlprob, x0s, result, SimpleLimitedMemoryBroyden(; threshold = lbfgsalg.m, linesearch = Val(true)), maxiters; ndrange = length(x0s))
 
     # @show result
     t1 = time()
@@ -79,7 +79,7 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem, opt::HybridPSOLB
     # @show typeof(sol_bfgs)
 
     sol_bfgs = (x -> isnan(x) ? Inf32 : x).(sol_bfgs)
-    @show minimum(sol_bfgs)
+    # @show minimum(sol_bfgs)
 
     minobj, ind = findmin(sol_bfgs)
 
