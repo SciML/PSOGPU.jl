@@ -52,7 +52,7 @@ include("./ode_pso.jl")
 include("./kernels.jl")
 include("./lowerlevel_solve.jl")
 include("./solve.jl")
-include("./lbfgs.jl")
+include("./bfgs.jl")
 include("./hybrid.jl")
 
 export ParallelPSOKernel,

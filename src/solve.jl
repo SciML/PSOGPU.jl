@@ -44,7 +44,12 @@ function pso_solve(prob::OptimizationProblem,
         args...;
         kwargs...)
     init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
-    gbest, particles = vectorized_solve!(prob, init_gbest, particles, opt, args...; kwargs...)
+    gbest, particles = vectorized_solve!(prob,
+        init_gbest,
+        particles,
+        opt,
+        args...;
+        kwargs...)
     gbest, particles
 end
 
