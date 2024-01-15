@@ -48,7 +48,7 @@ end
 
 include("./algorithms.jl")
 include("./utils.jl")
-# include("./ode_pso.jl")
+include("./ode_pso.jl")
 include("./kernels.jl")
 include("./lowerlevel_solve.jl")
 include("./solve.jl")
