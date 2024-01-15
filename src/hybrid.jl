@@ -21,14 +21,11 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem,
     x0s = sol_pso.original
     prob = remake(prob, lb = nothing, ub = nothing)
     f = Base.Fix2(prob.f.f, prob.p)
-
-    function _g(θ, _p = nothing)
-        return ForwardDiff.gradient(f, θ)
-    end
+    ∇f = instantiate_gradient(f, prob.f.adtype)
 
     kernel = simplebfgs_run!(backend)
     result = KernelAbstractions.allocate(backend, typeof(prob.u0), length(x0s))
-    nlprob = NonlinearProblem{false}(_g, prob.u0)
+    nlprob = NonlinearProblem{false}(∇f, prob.u0)
 
     nlalg = LocalOpt isa LBFGS ?
             SimpleLimitedMemoryBroyden(;
