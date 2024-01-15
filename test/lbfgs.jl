@@ -1,6 +1,4 @@
-using PSOGPU, Optimization, CUDA
-using StaticArrays, KernelAbstractions
-using Optimization
+using PSOGPU, Optimization, CUDA, StaticArrays
 
 function objf(x, p)
     return 1 - x[1]^2 - x[2]^2
