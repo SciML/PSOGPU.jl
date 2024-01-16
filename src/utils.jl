@@ -193,3 +193,11 @@ Based on the paper: Particle swarm optimization method for constrained optimizat
     penalty = h(T(iter)) * penalty
     penalty
 end
+
+@inline function instantiate_gradient(f, adtype::AutoForwardDiff)
+    (θ, p) -> ForwardDiff.gradient(f, θ)
+end
+
+@inline function instantiate_gradient(f, adtype::AutoEnzyme)
+    (θ, p) -> autodiff_deferred(Reverse, f, Active, Active(θ))[1][1]
+end

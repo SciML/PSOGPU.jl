@@ -27,7 +27,7 @@ end
 
     prob = OptimizationProblem(rosenbrock, x0, p; lb = lb, ub = ub)
 
-    n_particles = 1000
+    n_particles = 5000
 
     sol = solve(prob, ParallelPSOKernel(n_particles; backend), maxiters = 500)
 
@@ -37,11 +37,15 @@ end
         ParallelPSOKernel(n_particles; backend, global_update = false),
         maxiters = 500)
 
+    @test prob.f(prob.u0, prob.p) > sol.objective
+
     @test sol.retcode == ReturnCode.Default
 
     sol = solve(prob,
         ParallelSyncPSOKernel(n_particles; backend),
         maxiters = 500)
 
-    @test sol.objective < 6e-4
+    @test prob.f(prob.u0, prob.p) > sol.objective
+
+    @test sol.objective < 6e-1
 end

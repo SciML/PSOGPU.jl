@@ -1,6 +1,6 @@
 
 abstract type PSOAlgorithm end
-
+abstract type HybridPSOAlgorithm{LocalOpt} end
 """
 ```julia
 ParallelPSOKernel(num_particles = 100)
@@ -118,3 +118,28 @@ end
 
 SciMLBase.allowsbounds(::PSOAlgorithm) = true
 SciMLBase.allowsconstraints(::PSOAlgorithm) = true
+
+struct LBFGS
+    threshold::Int
+end
+
+function LBFGS(; threshold = 10)
+    LBFGS(threshold)
+end
+
+struct BFGS end
+
+struct HybridPSO{Backend, LocalOpt} <: HybridPSOAlgorithm{LocalOpt}
+    pso::PSOAlgorithm
+    local_opt::LocalOpt
+    backend::Backend
+end
+
+function HybridPSO(;
+        backend = CPU(),
+        pso = PSOGPU.ParallelPSOKernel(100; global_update = false, backend),
+        local_opt = LBFGS())
+    HybridPSO(pso, local_opt, backend)
+end
+
+SciMLBase.allowsbounds(::HybridPSOAlgorithm{LocalOpt}) where {LocalOpt} = true
