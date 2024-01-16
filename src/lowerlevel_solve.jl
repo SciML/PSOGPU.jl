@@ -35,7 +35,7 @@ function vectorized_solve!(prob,
 
     backend = get_backend(gpu_particles)
 
-    kernel = update_particle_states!(backend)
+    kernel = update_particle_states!(backend, 1024)
 
     lock = KernelAbstractions.allocate(backend, UInt32, 1)
     fill!(lock, UInt32(0))

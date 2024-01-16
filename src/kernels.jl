@@ -33,16 +33,28 @@ end
     particle
 end
 
-@kernel function update_particle_states!(prob, gpu_particles::AbstractArray{SPSOParticle{T1,T2}}, gbest_ref, w,
+@kernel function update_particle_states!(prob,
+        gpu_particles::AbstractArray{SPSOParticle{T1, T2}}, gbest_ref, w,
         opt::ParallelPSOKernel, lock; c1 = 1.4962f0,
-        c2 = 1.4962f0) where {T1,T2}
+        c2 = 1.4962f0) where {T1, T2}
     i = @index(Global, Linear)
     # FIXME: Determine the right amount of shmem to use
-    best_queue = @localmem SPSOGBest{T1,T2} 1024
+
+    @uniform gs = @groupsize()[1]
+
+    best_queue = @localmem SPSOGBest{T1, T2} (gs)
     queue_num = @localmem UInt32 1
 
     @inbounds gbest = gbest_ref[1]
     @inbounds particle = gpu_particles[i]
+
+    # Initialize cost to be Inf
+    for bq_idx in 1:gs
+        best_queue[bq_idx] = SPSOGBest(particle.best_position,
+            convert(typeof(particle.cost), Inf))
+    end
+
+    @synchronize
 
     particle = update_particle_state(particle, prob, gbest, w, c1, c2, i, opt)
     @inbounds gpu_particles[i] = particle
@@ -52,11 +64,9 @@ end
     if particle.best_cost < gbest.cost
         queue_idx = @atomic queue_num[1] += UInt32(1)
         @inbounds best_queue[queue_idx] = SPSOGBest(particle.best_position,
-                                                    particle.best_cost)
+            particle.best_cost)
     end
-
     @synchronize
-
     if i <= first(@ndrange())
         tidx = @index(Local, Linear)
         if tidx == 1
