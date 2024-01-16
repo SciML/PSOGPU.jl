@@ -57,10 +57,10 @@ l0 = rosenbrock(x0, p)
 
 @time sol = Optimization.solve(prob,
     PSOGPU.HybridPSO(; backend = CUDABackend()),
-    maxiters = 30)
+    locaL_maxiters = 30)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
     PSOGPU.HybridPSO(; local_opt = PSOGPU.BFGS(), backend = CUDABackend()),
-    maxiters = 30)
+    local_maxiters = 30)
 @show sol.objective

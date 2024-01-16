@@ -11,6 +11,7 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem,
         abstol = nothing,
         reltol = nothing,
         maxiters = 100,
+        local_maxiters = 10,
         kwargs...) where {Backend, LocalOpt <: Union{LBFGS, BFGS}}
     t0 = time()
     psoalg = opt.pso
@@ -32,7 +33,14 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem,
         threshold = local_opt.threshold,
         linesearch = Val(true)) : SimpleBroyden(; linesearch = Val(true))
 
-    kernel(nlprob, x0s, result, nlalg, maxiters, abstol, reltol; ndrange = length(x0s))
+    kernel(nlprob,
+        x0s,
+        result,
+        nlalg,
+        local_maxiters,
+        abstol,
+        reltol;
+        ndrange = length(x0s))
 
     t1 = time()
     sol_bfgs = (x -> prob.f(x, prob.p)).(result)
