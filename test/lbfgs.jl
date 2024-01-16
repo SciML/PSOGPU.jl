@@ -1,4 +1,14 @@
-using PSOGPU, Optimization, CUDA, StaticArrays
+using PSOGPU, Optimization, StaticArrays
+
+DEVICE = get(ENV, "GROUP", "CUDA")
+
+@eval using $(Symbol(DEVICE))
+
+if DEVICE == "CUDA"
+    backend = CUDABackend()
+elseif DEVICE == "AMDGPU"
+    backend = ROCBackend()
+end
 
 function objf(x, p)
     return 1 - x[1]^2 - x[2]^2
@@ -28,17 +38,17 @@ l0 = rosenbrock(x0, p)
     maxiters = 20)
 @show sol.objective
 @time sol = Optimization.solve(prob,
-    PSOGPU.ParallelPSOKernel(100, backend = CUDABackend()),
+    PSOGPU.ParallelPSOKernel(100; backend),
     maxiters = 100)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSO(; backend = CUDABackend()),
+    PSOGPU.HybridPSO(; backend),
     maxiters = 30)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSO(; local_opt = PSOGPU.BFGS(), backend = CUDABackend()),
+    PSOGPU.HybridPSO(; local_opt = PSOGPU.BFGS(), backend = backend),
     maxiters = 30)
 @show sol.objective
 
@@ -51,16 +61,16 @@ l0 = rosenbrock(x0, p)
     maxiters = 20)
 @show sol.objective
 @time sol = Optimization.solve(prob,
-    PSOGPU.ParallelPSOKernel(100, backend = CUDABackend()),
+    PSOGPU.ParallelPSOKernel(100, backend = backend),
     maxiters = 100)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSO(; backend = CUDABackend()),
+    PSOGPU.HybridPSO(; backend = backend),
     local_maxiters = 30)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSO(; local_opt = PSOGPU.BFGS(), backend = CUDABackend()),
+    PSOGPU.HybridPSO(; local_opt = PSOGPU.BFGS(), backend = backend),
     local_maxiters = 30)
 @show sol.objective
