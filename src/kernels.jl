@@ -69,7 +69,12 @@ end
                 end
 
                 # Take lock
-                #while !(@atomicreplace lock[1] 0=>1).success end
+                while true
+                    res = @atomicreplace lock[1] UInt32(0)=>UInt32(1)
+                    if res.success
+                        break
+                    end
+                end
 
                 # Update global best fit
                 gbest = @inbounds gbest_ref[1]
