@@ -31,8 +31,6 @@ prob = OptimizationProblem(opt_f, x0, p, lcons = lcons, ucons = ucons, lb = lb, 
 
 n_particles = 1000
 
-backend = CUDABackend()
-
 sol = solve(prob, ParallelSyncPSOKernel(n_particles; backend), maxiters = 500)
 @test sol.retcode == ReturnCode.Default
 @test abs(1 - 2 * sol.u[2] + sol.u[1]) < 1e-1
