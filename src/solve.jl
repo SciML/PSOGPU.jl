@@ -2,12 +2,16 @@ function get_pos(particle)
     return particle.position
 end
 
-function SciMLBase.__solve(prob::OptimizationProblem, opt::PSOAlgorithm, args...; kwargs...)
+function SciMLBase.__solve(prob::OptimizationProblem,
+        opt::PSOAlgorithm,
+        args...;
+        maxiters = 100,
+        kwargs...)
     lb, ub = check_init_bounds(prob)
     lb, ub = check_init_bounds(prob)
     prob = remake(prob; lb = lb, ub = ub)
 
-    gbest, particles = pso_solve(prob, opt)
+    gbest, particles = pso_solve(prob, opt, args...; maxiters, kwargs...)
     particles_positions = get_pos.(particles)
     SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
         gbest.position, prob.f(gbest.position, prob.p), original = particles_positions)
@@ -70,6 +74,6 @@ function pso_solve(prob::OptimizationProblem,
     copyto!(gpu_particles, particles)
     init_gbest = init_gbest
 
-    gbest = vectorized_solve!(prob, init_gbest, gpu_particles, opt; kwargs...)
+    gbest = vectorized_solve!(prob, init_gbest, gpu_particles, opt, args...; kwargs...)
     gbest
 end

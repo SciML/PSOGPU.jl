@@ -10,7 +10,7 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem,
         args...;
         abstol = nothing,
         reltol = nothing,
-        maxiters = 1000,
+        maxiters = 100,
         kwargs...) where {Backend, LocalOpt <: Union{LBFGS, BFGS}}
     t0 = time()
     psoalg = opt.pso
