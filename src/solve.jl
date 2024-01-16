@@ -14,7 +14,8 @@ function SciMLBase.__solve(prob::OptimizationProblem,
     gbest, particles, solve_time = pso_solve(prob, opt, args...; maxiters, kwargs...)
     particles_positions = get_pos.(particles)
     SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
-        gbest.position, prob.f(gbest.position, prob.p), original = particles_positions, stats = Optimization.OptimizationStats(; time = solve_time))
+        gbest.position, prob.f(gbest.position, prob.p), original = particles_positions,
+        stats = Optimization.OptimizationStats(; time = solve_time))
 end
 
 function pso_solve(prob::OptimizationProblem,
@@ -33,6 +34,7 @@ function pso_solve(prob::OptimizationProblem,
     gpu_init_gbest = KernelAbstractions.allocate(backend, typeof(init_gbest), (1,))
     copyto!(gpu_init_gbest, [init_gbest])
 
+    t0 = time()
     gbest, particles = vectorized_solve!(prob,
         gpu_init_gbest,
         gpu_particles,
@@ -40,7 +42,8 @@ function pso_solve(prob::OptimizationProblem,
         Val(opt.global_update),
         args...;
         kwargs...)
-    gbest, particles
+    t1 = time()
+    gbest, particles, t1 - t0
 end
 
 function pso_solve(prob::OptimizationProblem,
@@ -48,19 +51,23 @@ function pso_solve(prob::OptimizationProblem,
         args...;
         kwargs...)
     init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
+    t0 = time()
     gbest, particles = vectorized_solve!(prob,
         init_gbest,
         particles,
         opt,
         args...;
         kwargs...)
-    gbest, particles
+    t1 = time()
+    gbest, particles, t1 - t0
 end
 
 function pso_solve(prob::OptimizationProblem, opt::SerialPSO, args...; kwargs...)
     init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
+    t0 = time()
     gbest, particles = vectorized_solve!(prob, init_gbest, particles, opt; kwargs...)
-    gbest, particles
+    t1 = time()
+    gbest, particles, t1 - t0
 end
 
 function pso_solve(prob::OptimizationProblem,
@@ -74,6 +81,13 @@ function pso_solve(prob::OptimizationProblem,
     copyto!(gpu_particles, particles)
     init_gbest = init_gbest
 
-    gbest = vectorized_solve!(prob, init_gbest, gpu_particles, opt, args...; kwargs...)
-    gbest
+    t0 = time()
+    gbest, particles = vectorized_solve!(prob,
+        init_gbest,
+        gpu_particles,
+        opt,
+        args...;
+        kwargs...)
+    t1 = time()
+    gbest, particles, t1 - t0
 end
