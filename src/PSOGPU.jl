@@ -38,11 +38,21 @@ function Base.isless(a::PSOGPU.SPSOParticle{T1, T2},
     a.best_cost < b.best_cost
 end
 
+function Base.isless(a::PSOGPU.SPSOGBest{T1, T2},
+        b::PSOGPU.SPSOGBest{T1, T2}) where {T1, T2}
+    a.cost < b.cost
+end
+
 function Base.typemax(::Type{PSOGPU.SPSOParticle{T1, T2}}) where {T1, T2}
     PSOGPU.SPSOParticle{T1, T2}(similar(T1),
         similar(T1),
         typemax(T2),
         similar(T1),
+        typemax(T2))
+end
+
+function Base.typemax(::Type{PSOGPU.SPSOGBest{T1, T2}}) where {T1, T2}
+    PSOGPU.SPSOGBest{T1, T2}(similar(T1),
         typemax(T2))
 end
 

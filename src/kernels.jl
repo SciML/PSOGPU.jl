@@ -54,14 +54,43 @@ end
     @inbounds gpu_particles[i] = particle
 end
 
-@kernel function update_particle_states!(prob, gpu_particles, gbest, w,
+@kernel function update_particle_states!(prob,
+        gpu_particles::AbstractArray{SPSOParticle{T1, T2}}, block_particles, gbest, w,
         opt::ParallelSyncPSOKernel; c1 = 1.4962f0,
-        c2 = 1.4962f0)
+        c2 = 1.4962f0) where {T1, T2}
     i = @index(Global, Linear)
+    tidx = @index(Local, Linear)
+    gidx = @index(Group, Linear)
+
+    @uniform gs = @groupsize()[1]
+
+    group_particles = @localmem SPSOGBest{T1, T2} (gs)
+
+    i > length(gpu_particles) && return
 
     @inbounds particle = gpu_particles[i]
 
     particle = update_particle_state(particle, prob, gbest, w, c1, c2, i, opt)
+
+    @inbounds group_particles[tidx] = SPSOGBest(particle.best_position, particle.best_cost)
+
+    stride = gs ÷ 2
+
+    while stride >= 1
+        @synchronize
+        if tidx <= stride
+            @inbounds if group_particles[tidx].cost > group_particles[tidx + stride].cost
+                group_particles[tidx] = group_particles[tidx + stride]
+            end
+        end
+        stride = stride ÷ 2
+    end
+
+    @synchronize
+
+    if tidx == 1
+        @inbounds block_particles[gidx] = group_particles[tidx]
+    end
 
     @inbounds gpu_particles[i] = particle
 end
