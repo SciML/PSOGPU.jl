@@ -5,6 +5,7 @@ version = "1.0.0-DEV"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -29,4 +30,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "StaticArrays", "LinearAlgebra", "Optimization", "ForwardDiff", ]
+test = ["Test", "StaticArrays", "LinearAlgebra", "Optimization", "ForwardDiff"]

@@ -60,7 +60,7 @@ function parameter_estim_ode!(prob::ODEProblem,
     update_states! = PSOGPU._update_particle_states!(backend)
 
     losses = KernelAbstractions.allocate(backend,
-        typeof(prob.u0),
+        eltype(prob.u0),
         (1, length(gpu_particles)))
     update_costs! = PSOGPU._update_particle_costs!(backend)
 

@@ -50,7 +50,8 @@ optprob = OptimizationProblem(loss, prob_nn.p[2], (prob_nn, tsteps); lb = lb, ub
 using PSOGPU
 using CUDA
 
-gbest, particles = PSOGPU.init_particles(optprob, n_particles)
+opt = ParallelPSOKernel(n_particles)
+gbest, particles = PSOGPU.init_particles(optprob, opt, typeof(prob.u0))
 
 gpu_data = cu([SVector{length(prob_nn.u0), eltype(prob_nn.u0)}(@view data[:, i])
                for i in 1:length(tsteps)])
