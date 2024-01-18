@@ -8,7 +8,7 @@ function vectorized_solve!(prob,
     backend = get_backend(gpu_particles)
 
     ## TODO: Get dynamic workgroupsize
-    workgroupsize = (64,)
+    workgroupsize = (min(length(gpu_particles), 1024),)
 
     update_particle_kernel = update_particle_states!(backend, workgroupsize)
 

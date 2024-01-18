@@ -66,7 +66,11 @@ end
 
     group_particles = @localmem SPSOGBest{T1, T2} (gs)
 
-    i > length(gpu_particles) && return
+    if tidx == 1
+        fill!(group_particles, SPSOGBest(gbest.position, convert(typeof(gbest.cost), Inf)))
+    end
+
+    @synchronize
 
     @inbounds particle = gpu_particles[i]
 
