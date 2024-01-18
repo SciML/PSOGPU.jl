@@ -45,10 +45,7 @@ function default_prob_func(prob, gpu_particle)
     return remake(prob, p = gpu_particle.position)
 end
 
-function parameter_estim_ode!(prob::ODEProblem,
-        gpu_particles,
-        gbest,
-        data,
+function parameter_estim_ode!(prob::ODEProblem, cache,
         lb,
         ub;
         ode_alg = GPUTsit5(),
@@ -56,12 +53,9 @@ function parameter_estim_ode!(prob::ODEProblem,
         w = 0.72980f0,
         wdamp = 1.0f0,
         maxiters = 100, kwargs...)
+    (losses, gpu_particles, gpu_data, gbest) = cache
     backend = get_backend(gpu_particles)
     update_states! = PSOGPU._update_particle_states!(backend)
-
-    losses = KernelAbstractions.allocate(backend,
-        typeof(prob.u0),
-        (1, length(gpu_particles)))
     update_costs! = PSOGPU._update_particle_costs!(backend)
 
     improb = make_prob_compatible(prob)
@@ -80,16 +74,11 @@ function parameter_estim_ode!(prob::ODEProblem,
             prob,
             ode_alg; kwargs...)
 
-        sum!(losses, (map(x -> sum(x .^ 2), data .- us)))
+        sum!(losses, (map(x -> sum(x .^ 2), gpu_data .- us)))
 
         update_costs!(losses, gpu_particles; ndrange = length(losses))
 
-        best_particle = minimum(gpu_particles,
-            init = PSOGPU.SPSOParticle(gbest.position,
-                gbest.position,
-                gbest.cost,
-                gbest.position,
-                gbest.cost))
+        best_particle = minimum(gpu_particles)
 
         gbest = PSOGPU.SPSOGBest(best_particle.best_position, best_particle.best_cost)
         w = w * wdamp
