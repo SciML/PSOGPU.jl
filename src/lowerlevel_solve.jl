@@ -7,16 +7,21 @@ function vectorized_solve!(prob,
         debug = false)
     backend = get_backend(gpu_particles)
 
-    update_particle_kernel = update_particle_states!(backend)
+    ## TODO: Get dynamic workgroupsize
+    workgroupsize = (min(length(gpu_particles), 1024),)
 
+    update_particle_kernel = update_particle_states!(backend, workgroupsize)
+
+    block_particles = KernelAbstractions.allocate(backend,
+        typeof(gbest),
+        cld(length(gpu_particles), workgroupsize[1]))
     for i in 1:maxiters
         update_particle_kernel(prob,
-            gpu_particles,
+            gpu_particles, block_particles,
             gbest,
             w, opt;
-            ndrange = length(gpu_particles))
-        best_particle = minimum(gpu_particles)
-        gbest = SPSOGBest(best_particle.position, best_particle.best_cost)
+            ndrange = length(gpu_particles), workgroupsize)
+        gbest = minimum(block_particles)
         w = w * wdamp
     end
 
