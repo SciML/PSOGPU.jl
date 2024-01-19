@@ -47,26 +47,33 @@ end
 
     particle = @private SPSOParticle{T1, T2} 1
 
+    @inbounds particle[1] = gpu_particles[i]
+    @inbounds gbest = gbest_ref[1]
+
     # Initialize cost to be Inf
-    @inbounds particle[1] = gpu_particles[i]
-    best_queue[tidx] = SPSOGBest(particle[1].best_position,
-                                 convert(T2, Inf))
-    queue_num[1] = UInt32(0)
+    if tidx == 1
+        fill!(best_queue, SPSOGBest(gbest.position, convert(typeof(gbest.cost), Inf)))
+        queue_num[1] = UInt32(0)
+    end
 
     @synchronize
 
-    @inbounds particle[1] = gpu_particles[i]
-    gbest = @inbounds gbest_ref[1]
-    @inbounds particle[1] = update_particle_state(particle[1], prob, gbest, w, c1, c2, i, opt)
+    @inbounds particle[1] = update_particle_state(particle[1],
+        prob,
+        gbest,
+        w,
+        c1,
+        c2,
+        i,
+        opt)
 
     @synchronize
 
-    @inbounds particle[1] = gpu_particles[i]
     gbest = @inbounds gbest_ref[1]
     if particle[1].best_cost < gbest.cost
         queue_idx = @atomic queue_num[1] += UInt32(1)
         @inbounds best_queue[queue_idx] = SPSOGBest(particle[1].best_position,
-                                                    particle[1].best_cost)
+            particle[1].best_cost)
     end
 
     @synchronize
@@ -98,6 +105,7 @@ end
             @atomicswap lock[1] = 0
         end
     end
+    @inbounds gpu_particles[i] = particle[1]
 end
 
 @kernel function update_particle_states!(prob,
