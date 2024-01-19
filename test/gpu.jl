@@ -31,11 +31,15 @@ end
 
     sol = solve(prob, ParallelPSOKernel(n_particles; backend), maxiters = 500)
 
+    @test prob.f(prob.u0, prob.p) > sol.objective
+
+    @test sol.objective < 6e-4
+
     @test sol.retcode == ReturnCode.Default
 
     sol = solve(prob,
         ParallelPSOKernel(n_particles; backend, global_update = false),
-        maxiters = 500)
+        maxiters = 1000)
 
     @test prob.f(prob.u0, prob.p) > sol.objective
 
@@ -47,5 +51,5 @@ end
 
     @test prob.f(prob.u0, prob.p) > sol.objective
 
-    @test sol.objective < 6e-1
+    @test sol.objective < 6e-4
 end
