@@ -38,63 +38,64 @@ end
         opt::ParallelPSOKernel, lock; c1 = 1.4962f0,
         c2 = 1.4962f0) where {T1, T2}
     i = @index(Global, Linear)
-    # FIXME: Determine the right amount of shmem to use
+    tidx = @index(Local, Linear)
 
     @uniform gs = @groupsize()[1]
 
     best_queue = @localmem SPSOGBest{T1, T2} (gs)
     queue_num = @localmem UInt32 1
 
-    @inbounds gbest = gbest_ref[1]
-    @inbounds particle = gpu_particles[i]
+    particle = @private SPSOParticle{T1, T2} 1
 
     # Initialize cost to be Inf
-    for bq_idx in 1:gs
-        best_queue[bq_idx] = SPSOGBest(particle.best_position,
-            convert(typeof(particle.cost), Inf))
-    end
+    @inbounds particle[1] = gpu_particles[i]
+    best_queue[tidx] = SPSOGBest(particle[1].best_position,
+                                 convert(T2, Inf))
+    queue_num[1] = UInt32(0)
 
     @synchronize
 
-    particle = update_particle_state(particle, prob, gbest, w, c1, c2, i, opt)
-    @inbounds gpu_particles[i] = particle
+    @inbounds particle[1] = gpu_particles[i]
+    gbest = @inbounds gbest_ref[1]
+    @inbounds particle[1] = update_particle_state(particle[1], prob, gbest, w, c1, c2, i, opt)
 
     @synchronize
 
-    if particle.best_cost < gbest.cost
+    @inbounds particle[1] = gpu_particles[i]
+    gbest = @inbounds gbest_ref[1]
+    if particle[1].best_cost < gbest.cost
         queue_idx = @atomic queue_num[1] += UInt32(1)
-        @inbounds best_queue[queue_idx] = SPSOGBest(particle.best_position,
-            particle.best_cost)
+        @inbounds best_queue[queue_idx] = SPSOGBest(particle[1].best_position,
+                                                    particle[1].best_cost)
     end
+
     @synchronize
-    if i <= first(@ndrange())
-        tidx = @index(Local, Linear)
-        if tidx == 1
-            if queue_num[1] > 1
-                # Find best fit in block
-                for j in 2:queue_num[1]
-                    @inbounds if best_queue[j].cost < best_queue[1].cost
-                        best_queue[1] = best_queue[j]
-                    end
-                end
 
-                # Take lock
-                while true
-                    res = @atomicreplace lock[1] UInt32(0)=>UInt32(1)
-                    if res.success
-                        break
-                    end
+    if tidx == 1
+        if queue_num[1] > 1
+            # Find best fit in block
+            for j in 2:queue_num[1]
+                @inbounds if best_queue[j].cost < best_queue[1].cost
+                    best_queue[1] = best_queue[j]
                 end
-
-                # Update global best fit
-                gbest = @inbounds gbest_ref[1]
-                @inbounds if best_queue[1].cost < gbest.cost
-                    gbest_ref[1] = best_queue[1]
-                end
-
-                # Release lock
-                @atomicswap lock[1] = 0
             end
+
+            # Take lock
+            while true
+                res = @atomicreplace lock[1] UInt32(0)=>UInt32(1)
+                if res.success
+                    break
+                end
+            end
+
+            # Update global best fit
+            gbest = @inbounds gbest_ref[1]
+            @inbounds if best_queue[1].cost < gbest.cost
+                gbest_ref[1] = best_queue[1]
+            end
+
+            # Release lock
+            @atomicswap lock[1] = 0
         end
     end
 end
