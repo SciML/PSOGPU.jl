@@ -92,8 +92,7 @@ end
 
     us = OrdinaryDiffEq.__solve(prob,
             ode_alg; kwargs...).u
-
-    sum(abs2, gpu_data .- us)
+    us
 end
 
 function parameter_estim_odehybrid(prob::ODEProblem, cache,
@@ -137,14 +136,14 @@ function parameter_estim_odehybrid(prob::ODEProblem, cache,
         w = w * wdamp
     end
 
-    f = Base.Fix2(ode_loss, (improb, Tsit5()))
-
-    ∇f = (θ, p) -> autodiff_deferred(Reverse, f, Active, Active(θ))[1][1]
-
+    _f = Base.Fix2(ode_loss, (improb, Tsit5()))
+    # autodiff_deferred(Reverse, sum(abs2, gpu_data .- us), Active, Active(particle))[1][1]
+    f = x -> ForwardDiff.gradient(sum(abs2, gpu_data .- _f(x)), x)
+    
     kernel = simplebfgs_run!(backend)
     x0s = get_pos.(gpu_particles)
     result = KernelAbstractions.allocate(backend, typeof(prob.u0), length(x0s))
-    nlprob = NonlinearProblem{false}(∇f, prob.p)
+    nlprob = NonlinearProblem{false}((x, p) -> f(x), prob.p)
 
     nlalg = SimpleBroyden(; linesearch = Val(true))
 
