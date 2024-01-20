@@ -3,7 +3,7 @@ using CUDA
 
 device!(2)
 
-N = 10
+N = 3
 function rosenbrock(x, p)
     sum(p[2] * (x[i + 1] - x[i]^2)^2 + (p[1] - x[i])^2 for i in 1:(length(x) - 1))
 end

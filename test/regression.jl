@@ -1,4 +1,4 @@
-using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random
+using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random, KernelAbstractions
 
 @testset "Rosenbrock test dimension = $(N)" for N in 2:3
 
@@ -36,6 +36,18 @@ using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random
 
     @test sol.objective < 1e-4
 
+    sol = solve(prob,
+        ParallelPSOKernel(n_particles; backend = CPU()),
+        maxiters = 500)
+
+    @test sol.objective < 1e-4
+
+    sol = solve(prob,
+        ParallelSyncPSOKernel(n_particles; backend = CPU()),
+        maxiters = 500)
+
+    @test sol.objective < 1e-4
+
     lb = @SVector fill(Float32(-Inf), N)
     ub = @SVector fill(Float32(Inf), N)
 
@@ -54,6 +66,18 @@ using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random
 
     @test sol.objective < 1e-4
 
+    sol = solve(prob,
+        ParallelPSOKernel(n_particles; backend = CPU()),
+        maxiters = 500)
+
+    @test sol.objective < 1e-4
+
+    sol = solve(prob,
+        ParallelSyncPSOKernel(n_particles; backend = CPU()),
+        maxiters = 500)
+
+    @test sol.objective < 1e-4
+
     array_prob = remake(array_prob; lb = nothing, ub = nothing)
     prob = remake(prob; lb = nothing, ub = nothing)
 
@@ -65,6 +89,18 @@ using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random
 
     sol = solve(prob,
         SerialPSO(n_particles),
+        maxiters = 500)
+
+    @test sol.objective < 1e-4
+
+    sol = solve(prob,
+        ParallelPSOKernel(n_particles; backend = CPU()),
+        maxiters = 500)
+
+    @test sol.objective < 1e-4
+
+    sol = solve(prob,
+        ParallelSyncPSOKernel(n_particles; backend = CPU()),
         maxiters = 500)
 
     @test sol.objective < 1e-4
@@ -102,6 +138,18 @@ end
 
     @test sol.objective < 2e-3
 
+    sol = solve(prob,
+        ParallelPSOKernel(n_particles; backend = CPU()),
+        maxiters = 1000)
+
+    @test sol.objective < 2e-3
+
+    sol = solve(prob,
+        ParallelSyncPSOKernel(n_particles; backend = CPU()),
+        maxiters = 1000)
+
+    @test sol.objective < 2e-3
+
     lb = @SVector fill(Float32(-Inf), N)
     ub = @SVector fill(Float32(Inf), N)
 
@@ -119,6 +167,18 @@ end
 
     sol = solve(prob,
         SerialPSO(n_particles),
+        maxiters = 1000)
+
+    @test sol.objective < 2e-3
+
+    sol = solve(prob,
+        ParallelPSOKernel(n_particles; backend = CPU()),
+        maxiters = 1000)
+
+    @test sol.objective < 2e-3
+
+    sol = solve(prob,
+        ParallelSyncPSOKernel(n_particles; backend = CPU()),
         maxiters = 1000)
 
     @test sol.objective < 2e-3

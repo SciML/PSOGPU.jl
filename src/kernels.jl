@@ -48,11 +48,10 @@ end
     particle = @private SPSOParticle{T1, T2} 1
 
     @inbounds particle[1] = gpu_particles[i]
-    @inbounds gbest = gbest_ref[1]
-
     # Initialize cost to be Inf
     if tidx == 1
-        fill!(best_queue, SPSOGBest(gbest.position, convert(typeof(gbest.cost), Inf)))
+        fill!(best_queue,
+            SPSOGBest(particle[1].position, convert(typeof(particle[1].cost), Inf)))
         queue_num[1] = UInt32(0)
     end
 
@@ -60,7 +59,7 @@ end
 
     @inbounds particle[1] = update_particle_state(particle[1],
         prob,
-        gbest,
+        gbest_ref[1],
         w,
         c1,
         c2,
@@ -69,8 +68,7 @@ end
 
     @synchronize
 
-    gbest = @inbounds gbest_ref[1]
-    if particle[1].best_cost < gbest.cost
+    @inbounds if particle[1].best_cost < gbest_ref[1].cost
         queue_idx = @atomic queue_num[1] += UInt32(1)
         @inbounds best_queue[queue_idx] = SPSOGBest(particle[1].best_position,
             particle[1].best_cost)
@@ -96,8 +94,7 @@ end
             end
 
             # Update global best fit
-            gbest = @inbounds gbest_ref[1]
-            @inbounds if best_queue[1].cost < gbest.cost
+            @inbounds if best_queue[1].cost < gbest_ref[1].cost
                 gbest_ref[1] = best_queue[1]
             end
 
@@ -149,6 +146,21 @@ end
     if tidx == 1
         @inbounds block_particles[gidx] = group_particles[tidx]
     end
+
+    @inbounds gpu_particles[i] = particle
+end
+
+# Why you say we need a different code for CPUs for sync version? Turns out
+# that you cannot do reduction within a kernel due to some bugs in KA.jl
+# https://github.com/JuliaGPU/KernelAbstractions.jl/issues/330
+@kernel function update_particle_states!(prob, gpu_particles, gbest, w,
+        opt::ParallelSyncPSOKernel{Backend, T, G, H}; c1 = 1.4962f0,
+        c2 = 1.4962f0) where {Backend <: CPU, T, G, H}
+    i = @index(Global, Linear)
+
+    @inbounds particle = gpu_particles[i]
+
+    particle = update_particle_state(particle, prob, gbest, w, c1, c2, i, opt)
 
     @inbounds gpu_particles[i] = particle
 end
