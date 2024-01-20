@@ -150,6 +150,9 @@ end
     @inbounds gpu_particles[i] = particle
 end
 
+# Why you say we need a different code for CPUs for sync version? Turns out
+# that you cannot do reduction within a kernel due to some bugs in KA.jl
+# https://github.com/JuliaGPU/KernelAbstractions.jl/issues/330
 @kernel function update_particle_states!(prob, gpu_particles, gbest, w,
         opt::ParallelSyncPSOKernel{Backend, T, G, H}; c1 = 1.4962f0,
         c2 = 1.4962f0) where {Backend <: CPU, T, G, H}
