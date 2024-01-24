@@ -1,25 +1,27 @@
+using Pkg
+Pkg.activate(@__DIR__)
 using PSOGPU, OrdinaryDiffEq, StaticArrays
 
 function f(u, p, t)
-    a,b,τinv,l = p
-    v,w = u
-    dv = v - v^3/3 -w + l
-    dw = τinv*(v +  a - b*w)
+    a, b, τinv, l = p
+    v, w = u
+    dv = v - v^3 / 3 - w + l
+    dw = τinv * (v + a - b * w)
     return SVector{2}(dv, dw)
 end
 
-p = @SArray [0.7f0,0.8f0,0.08f0,0.5f0]              # Parameters used to construct the dataset
+p = @SArray [0.7f0, 0.8f0, 0.08f0, 0.5f0]              # Parameters used to construct the dataset
 r0 = @SArray [1.0f0; 1.0f0]                     # initial value
 tspan = (0.0f0, 30.0f0)                 # sample of 3000 observations over the (0,30) timespan
-prob = ODEProblem(f, r0, tspan,p)
+prob = ODEProblem(f, r0, tspan, p)
 
 tspan2 = (0.0f0, 3.0f0)                 # sample of 300 observations with a timestep of 0.01
-prob_short = ODEProblem(f, r0, tspan2,p)
+prob_short = ODEProblem(f, r0, tspan2, p)
 
-dt = 30.0f0/3000f0
+dt = 30.0f0 / 3000.0f0
 tf = 30.0f0
-tinterval = 0f0:dt:tf
-t  = collect(tinterval)
+tinterval = 0.0f0:dt:tf
+t = collect(tinterval)
 
 h = 0.01f0
 M = 300
@@ -28,19 +30,22 @@ tstop = tstart + M * h
 tinterval_short = 0:h:tstop
 t_short = collect(tinterval_short)
 
-data_sol_short = solve(prob_short,Vern9(),saveat=t_short,reltol=1f-6,abstol=1f-6)
+data_sol_short = solve(prob_short,
+    Vern9(),
+    saveat = t_short,
+    reltol = 1.0f-6,
+    abstol = 1.0f-6)
 data_short = convert(Array, data_sol_short) # This operation produces column major dataset obs as columns, equations as rows
-data_sol = solve(prob,Vern9(),saveat=t,reltol=1f-6,abstol=1f-6)
+data_sol = solve(prob, Vern9(), saveat = t, reltol = 1.0f-6, abstol = 1.0f-6)
 data = convert(Array, data_sol)
 
-using Plots
+# using Plots
 
-plot(data_sol_short)
+# plot(data_sol_short)
 
-plot(data_sol)
+# plot(data_sol)
 
 n_particles = 10_000
-
 
 # obj_short = build_loss_objective(prob_short,Tsit5(),L2Loss(t_short,data_short),tstops=t_short)
 function loss(u, p)
@@ -50,8 +55,8 @@ function loss(u, p)
     sum(abs2, data_short .- pred)
 end
 
-lb = @SArray fill(0.f0, 4)
-ub = @SArray fill(5.f0, 4)
+lb = @SArray fill(0.0f0, 4)
+ub = @SArray fill(5.0f0, 4)
 
 optprob = OptimizationProblem(loss, prob.p, (prob, t_short); lb = lb, ub = ub)
 
@@ -68,20 +73,30 @@ gpu_particles = cu(particles)
 
 CUDA.allowscalar(false)
 
-function prob_func(prob, gpu_particle)
-    return remake(prob, p = (prob.p[1], gpu_particle.position))
-end
-
 using Adapt
 
 losses = adapt(CUDABackend(), ones(eltype(prob.u0), (1, n_particles)))
 
 solver_cache = (; losses, gpu_particles, gpu_data, gbest)
 
+adaptive = false
+
 @time gsol = PSOGPU.parameter_estim_ode!(prob,
     solver_cache,
     lb,
-    ub;
+    ub, Val(adaptive);
     saveat = t_short,
     dt = 0.1f0,
-    maxiters = 1)
+    maxiters = 100)
+
+using BenchmarkTools
+
+@benchmark PSOGPU.parameter_estim_ode!($prob,
+    $(deepcopy(solver_cache)),
+    $lb,
+    $ub, $Val(adaptive);
+    saveat = t_short,
+    dt = 0.1f0,
+    maxiters = 100)
+
+@show gbest.cost, gsol

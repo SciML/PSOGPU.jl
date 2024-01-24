@@ -47,7 +47,7 @@ end
 
 function parameter_estim_ode!(prob::ODEProblem, cache,
         lb,
-        ub;
+        ub, ::Val{true};
         ode_alg = GPUTsit5(),
         prob_func = default_prob_func,
         w = 0.72980f0,
@@ -68,17 +68,82 @@ function parameter_estim_ode!(prob::ODEProblem, cache,
             w;
             ndrange = length(gpu_particles))
 
+        KernelAbstractions.synchronize(backend)
+
         probs = prob_func.(Ref(improb), gpu_particles)
+
+        KernelAbstractions.synchronize(backend)
+
+        ###TODO: Somehow vectorized_asolve hangs and does not here :(
 
         ts, us = vectorized_asolve(probs,
             prob,
             ode_alg; kwargs...)
 
+        KernelAbstractions.synchronize(backend)
+
         sum!(losses, (map(x -> sum(x .^ 2), gpu_data .- us)))
 
         update_costs!(losses, gpu_particles; ndrange = length(losses))
 
+        KernelAbstractions.synchronize(backend)
+
         best_particle = minimum(gpu_particles)
+
+        KernelAbstractions.synchronize(backend)
+
+        gbest = PSOGPU.SPSOGBest(best_particle.best_position, best_particle.best_cost)
+        w = w * wdamp
+    end
+    return gbest
+end
+
+function parameter_estim_ode!(prob::ODEProblem, cache,
+        lb,
+        ub, ::Val{false};
+        ode_alg = GPUTsit5(),
+        prob_func = default_prob_func,
+        w = 0.72980f0,
+        wdamp = 1.0f0,
+        maxiters = 100, kwargs...)
+    (losses, gpu_particles, gpu_data, gbest) = cache
+    backend = get_backend(gpu_particles)
+    update_states! = PSOGPU._update_particle_states!(backend)
+    update_costs! = PSOGPU._update_particle_costs!(backend)
+
+    improb = make_prob_compatible(prob)
+
+    for i in 1:maxiters
+        update_states!(gpu_particles,
+            lb,
+            ub,
+            gbest,
+            w;
+            ndrange = length(gpu_particles))
+
+        KernelAbstractions.synchronize(backend)
+
+        probs = prob_func.(Ref(improb), gpu_particles)
+
+        KernelAbstractions.synchronize(backend)
+
+        ###TODO: Somehow vectorized_asolve hangs and does not here :(
+
+        ts, us = vectorized_solve(probs,
+            prob,
+            ode_alg; kwargs...)
+
+        KernelAbstractions.synchronize(backend)
+
+        sum!(losses, (map(x -> sum(x .^ 2), gpu_data .- us)))
+
+        update_costs!(losses, gpu_particles; ndrange = length(losses))
+
+        KernelAbstractions.synchronize(backend)
+
+        best_particle = minimum(gpu_particles)
+
+        KernelAbstractions.synchronize(backend)
 
         gbest = PSOGPU.SPSOGBest(best_particle.best_position, best_particle.best_cost)
         w = w * wdamp

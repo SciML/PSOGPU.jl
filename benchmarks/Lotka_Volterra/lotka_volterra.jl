@@ -1,3 +1,7 @@
+using Pkg
+
+Pkg.activate(@__DIR__)
+
 using StaticArrays, SciMLBase, OrdinaryDiffEq
 
 function f(u, p, t)
@@ -29,7 +33,8 @@ CUDA.allowscalar(false)
 
 n_particles = 10_000
 
-gbest, particles = PSOGPU.init_particles(optprob, n_particles)
+opt = ParallelPSOKernel(n_particles)
+gbest, particles = PSOGPU.init_particles(optprob, opt, typeof(prob.u0))
 
 gpu_data = cu([@SArray ones(length(prob.u0))])
 
@@ -41,9 +46,22 @@ lb = SVector{length(optprob.u0), eltype(optprob.u0)}(fill(eltype(optprob.u0)(-In
 ub = SVector{length(optprob.u0), eltype(optprob.u0)}(fill(eltype(optprob.u0)(Inf),
     length(optprob.u0))...)
 
-@time gsol = PSOGPU.parameter_estim_ode!(prob,
-    gpu_particles,
-    gbest,
-    gpu_data,
+using Adapt
+
+losses = adapt(CUDABackend(), ones(eltype(prob.u0), (1, n_particles)))
+
+solver_cache = (; losses, gpu_particles, gpu_data, gbest)
+
+adaptive = false
+
+@time gsol = PSOGPU.parameter_estim_ode!(prob, solver_cache,
     lb,
-    ub; saveat = t, dt = 0.1, backend = CUDABackend())
+    ub, Val(adaptive); saveat = t, dt = 0.1, maxiters = 100)
+
+using BenchmarkTools
+
+@benchmark PSOGPU.parameter_estim_ode!($prob, $(deepcopy(solver_cache)),
+    $lb,
+    $ub, Val(adaptive); saveat = t, dt = 0.1, maxiters = 100)
+
+@show gsol

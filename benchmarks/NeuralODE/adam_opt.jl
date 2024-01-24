@@ -1,7 +1,11 @@
+using Pkg
+
+Pkg.activate(@__DIR__)
+
 using SimpleChains,
     StaticArrays, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationFlux, Plots
 
-#device!(2)
+device!(2)
 # Get Tesla V100S
 u0 = @SArray Float32[2.0, 0.0]
 datasize = 30
@@ -120,10 +124,12 @@ losses = adapt(backend, ones(eltype(prob.u0), (1, n_particles)))
 
 solver_cache = (; losses, gpu_particles, gpu_data, gbest)
 
+adaptive = true
+
 @time gsol = PSOGPU.parameter_estim_ode!(prob_nn,
     solver_cache,
     lb,
-    ub;
+    ub, Val(adaptive);
     saveat = tsteps,
     dt = 0.1f0,
     prob_func = prob_func,
