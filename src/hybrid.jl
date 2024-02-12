@@ -33,6 +33,7 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem,
         threshold = local_opt.threshold,
         linesearch = Val(true)) : SimpleBroyden(; linesearch = Val(true))
 
+    t0 = time()
     kernel(nlprob,
         x0s,
         result,
@@ -42,12 +43,19 @@ function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem,
         reltol;
         ndrange = length(x0s))
 
-    t1 = time()
     sol_bfgs = (x -> prob.f(x, prob.p)).(result)
     sol_bfgs = (x -> isnan(x) ? convert(eltype(prob.u0), Inf) : x).(sol_bfgs)
 
     minobj, ind = findmin(sol_bfgs)
+    sol_u, sol_obj = minobj > sol_pso.objective ? (sol_pso.u, sol_pso.objective) :
+                     (view(result, ind), minobj)
+    t1 = time()
+
+    # @show sol_pso.stats.time
+
+    solve_time = (t1 - t0) + sol_pso.stats.time
 
     SciMLBase.build_solution(SciMLBase.DefaultOptimizationCache(prob.f, prob.p), opt,
-        view(result, ind), minobj)
+        sol_u, sol_obj,
+        stats = Optimization.OptimizationStats(; time = solve_time))
 end

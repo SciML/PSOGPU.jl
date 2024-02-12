@@ -5,6 +5,7 @@ Pkg.activate(@__DIR__)
 using SimpleChains,
     StaticArrays, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationFlux, Plots
 
+using CUDA
 device!(2)
 # Get Tesla V100S
 u0 = @SArray Float32[2.0, 0.0]
@@ -25,7 +26,11 @@ sc = SimpleChain(static(2),
     TurboDense{true}(tanh, static(2)),
     TurboDense{true}(identity, static(2)))
 
-p_nn = SimpleChains.init_params(sc)
+using Random
+rng = Random.default_rng()
+Random.seed!(rng, 0)
+
+p_nn = SimpleChains.init_params(sc; rng)
 
 f(u, p, t) = sc(u, p)
 
@@ -59,10 +64,23 @@ optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x),
     Optimization.AutoZygote())
 optprob = Optimization.OptimizationProblem(optf, p_nn)
 
-@time res = Optimization.solve(optprob, ADAM(0.05), maxiters = 100)
-@show res.objective
+@time res_adam = Optimization.solve(optprob, ADAM(0.05), maxiters = 100)
+@show res_adam.objective
+
+using BenchmarkTools
 
 @benchmark Optimization.solve(optprob, ADAM(0.05), maxiters = 100)
+
+## Evaluate the perf of LBFGS
+
+using OptimizationOptimJL
+
+moptprob = OptimizationProblem(optf, MArray{Tuple{size(p_nn)...}}(p_nn...))
+
+@time res_lbfgs = Optimization.solve(moptprob, LBFGS(), maxiters = 100)
+@show res_lbfgs.objective
+
+@benchmark Optimization.solve(moptprob, LBFGS(), maxiters = 100)
 
 ## PSOGPU stuff
 
@@ -104,9 +122,11 @@ using Adapt
 backend = CUDABackend()
 
 ## Initialize Particles
-gbest, particles = PSOGPU.init_particles(soptprob,
-    ParallelSyncPSOKernel(n_particles; backend = CUDABackend()),
-    typeof(prob.u0))
+
+Random.seed!(rng, 0)
+
+opt = ParallelPSOKernel(n_particles)
+gbest, particles = PSOGPU.init_particles(soptprob, opt, typeof(prob.u0))
 
 gpu_data = adapt(backend,
     [SVector{length(prob_nn.u0), eltype(prob_nn.u0)}(@view data[:, i])
@@ -138,13 +158,13 @@ adaptive = true
 @benchmark PSOGPU.parameter_estim_ode!($prob_nn,
     $(deepcopy(solver_cache)),
     $lb,
-    $ub;
+    $ub, Val(adaptive);
     saveat = tsteps,
     dt = 0.1f0,
     prob_func = prob_func,
     maxiters = 100)
 
-@show gsol.best
+@show gsol.cost
 
 using Plots
 
@@ -152,12 +172,32 @@ function predict_neuralode(p)
     Array(solve(prob_nn, Tsit5(); p = p, saveat = tsteps))
 end
 
-using Plots
-
-plt = scatter(tsteps, data[1, :], label = "data")
+plt = scatter(tsteps,
+    data[1, :],
+    label = "data",
+    ylabel = "u(t)",
+    xlabel = "t",
+    linewidth = 4,
+    title = "Optimizers performance after 100 iterations")
 
 pred_pso = predict_neuralode((sc, gsol.position))
-scatter!(plt, tsteps, pred[1, :], label = "PSO prediction")
+scatter!(plt, tsteps, pred_pso[1, :], label = "PSO prediction", markershape = :star5)
 
-pred_adam = predict_neuralode((sc, res.u))
-scatter!(plt, tsteps, pred_adam[1, :], label = "Adam prediction")
+pred_adam = predict_neuralode((sc, res_adam.u))
+scatter!(plt, tsteps, pred_adam[1, :], label = "ADAM prediction", markershape = :xcross)
+
+pred_lbfgs = predict_neuralode((sc, res_lbfgs.u))
+scatter!(plt, tsteps, pred_lbfgs[1, :], label = "LBFGS prediction", markershape = :cross)
+
+savefig("neural_ode.svg")
+
+# plt = plot(data[1, :], data[2, :], label = "data")
+
+# pred_pso = predict_neuralode((sc, gsol.position))
+# plot!(plt, pred_pso[1, :], pred_pso[2, :], label = "PSO prediction", ls = :dash)
+
+# pred_adam = predict_neuralode((sc, res_adam.u))
+# scatter!(plt, pred_adam[1, :], pred_adam[2, :], label = "Adam prediction")
+
+# pred_lbfgs = predict_neuralode((sc, res_lbfgs.u))
+# scatter!(plt, pred_lbfgs[1, :], pred_lbfgs[2, :], label = "Adam prediction")

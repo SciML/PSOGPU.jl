@@ -1,6 +1,7 @@
 using Pkg
 Pkg.activate(@__DIR__)
 using PSOGPU, OrdinaryDiffEq, StaticArrays
+using SciMLSensitivity, Optimization
 
 function f(u, p, t)
     a, b, τinv, l = p
@@ -58,10 +59,45 @@ end
 lb = @SArray fill(0.0f0, 4)
 ub = @SArray fill(5.0f0, 4)
 
+u_guess = @MArray zeros(Float32, 4)
+
+optprob = OptimizationProblem(Optimization.OptimizationFunction(loss,
+        Optimization.AutoForwardDiff()),
+    u_guess,
+    (prob_short, t_short))
+
+# optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x),
+#     Optimization.AutoZygote())
+# optprob = Optimization.OptimizationProblem(optf, p_nn)
+
+using OptimizationFlux
+
+@time res_adam = Optimization.solve(optprob, ADAM(0.05), maxiters = 100)
+@show res_adam.objective
+
+using BenchmarkTools
+
+@benchmark Optimization.solve(optprob, ADAM(0.05), maxiters = 100)
+
+## Evaluate the perf of LBFGS
+
+using OptimizationOptimJL
+
+@time res_lbfgs = Optimization.solve(optprob, LBFGS(), maxiters = 100)
+@show res_lbfgs.objective
+
+@benchmark Optimization.solve(optprob, LBFGS(), maxiters = 100)
+
 optprob = OptimizationProblem(loss, prob.p, (prob, t_short); lb = lb, ub = ub)
 
 using PSOGPU
 using CUDA
+
+using Random
+
+rng = Random.default_rng()
+
+Random.seed!(rng, 0)
 
 opt = ParallelPSOKernel(n_particles)
 gbest, particles = PSOGPU.init_particles(optprob, opt, typeof(prob.u0))
