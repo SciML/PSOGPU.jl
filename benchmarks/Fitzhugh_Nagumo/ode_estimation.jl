@@ -61,7 +61,8 @@ ub = @SArray fill(5.0f0, 4)
 
 u_guess = @MArray zeros(Float32, 4)
 
-optprob = OptimizationProblem(Optimization.OptimizationFunction(loss,
+optprob = OptimizationProblem(
+    Optimization.OptimizationFunction(loss,
         Optimization.AutoForwardDiff()),
     u_guess,
     (prob_short, t_short))

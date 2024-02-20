@@ -53,7 +53,8 @@ optprob = OptimizationProblem(loss, opt_u0, (prob_short, t_short); lb = lb, ub =
 
 u_guess = @MArray zeros(Float64, 4)
 
-optprob = OptimizationProblem(Optimization.OptimizationFunction(loss,
+optprob = OptimizationProblem(
+    Optimization.OptimizationFunction(loss,
         Optimization.AutoForwardDiff()),
     u_guess,
     (prob_short, t_short))

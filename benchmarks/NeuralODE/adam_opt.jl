@@ -3,7 +3,7 @@ using Pkg
 Pkg.activate(@__DIR__)
 
 using SimpleChains,
-    StaticArrays, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationFlux, Plots
+      StaticArrays, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationFlux, Plots
 
 using CUDA
 device!(2)

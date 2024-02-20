@@ -68,5 +68,5 @@ include("./bfgs.jl")
 include("./hybrid.jl")
 
 export ParallelPSOKernel,
-    ParallelSyncPSOKernel, ParallelPSOArray, SerialPSO, OptimizationProblem, solve
+       ParallelSyncPSOKernel, ParallelPSOArray, SerialPSO, OptimizationProblem, solve
 end

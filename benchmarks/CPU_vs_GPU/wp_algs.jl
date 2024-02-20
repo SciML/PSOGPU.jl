@@ -167,8 +167,7 @@ plt = plot(gpu_sync_times,
     xticks = xticks,
     yticks = yticks,
     marker = :circle,
-    dpi = 600
-    # color = :Green
+    dpi = 600    # color = :Green
 )
 
 plt = plot!(cpu_times,
@@ -187,8 +186,7 @@ plt = plot!(gpu_async_times,
     yaxis = :log,
     linewidth = 2,
     label = "ParallelPSOKernel (Async): GPU",
-    marker = :circle
-    # color = :Green
+    marker = :circle    # color = :Green
 )
 
 plt = plot!(gpu_queue_lock_times,
@@ -197,8 +195,7 @@ plt = plot!(gpu_queue_lock_times,
     yaxis = :log,
     linewidth = 2,
     label = "ParallelPSOKernel (Queue-lock): GPU",
-    marker = :circle
-    # color = :Green
+    marker = :circle    # color = :Green
 )
 
 plt = plot!(gpu_hybrid_times,
@@ -207,8 +204,7 @@ plt = plot!(gpu_hybrid_times,
     yaxis = :log,
     linewidth = 2,
     label = "HybridPSO-LBFGS: GPU",
-    marker = :circle
-    # color = :Green
+    marker = :circle    # color = :Green
 )
 
 savefig("wp_pso.svg")
@@ -434,8 +430,7 @@ plt = plot(lbfgs_time,
     xticks = xticks,
     yticks = yticks,
     marker = :circle,
-    dpi = 600
-    # color = :Green
+    dpi = 600    # color = :Green
 )
 
 plt = plot!(adam_time,
@@ -444,8 +439,7 @@ plt = plot!(adam_time,
     yaxis = :log,
     linewidth = 2,
     label = "ADAM",
-    marker = :circle
-    # color = :Orange
+    marker = :circle    # color = :Orange
 )
 
 plt = plot!(pso_cpu_time,
@@ -454,8 +448,7 @@ plt = plot!(pso_cpu_time,
     # yaxis = :log,
     linewidth = 2,
     label = "ParallelSyncPSOKernel: CPU",
-    marker = :circle
-    # color = :Green
+    marker = :circle    # color = :Green
 )
 
 plt = plot!(queue_lock_time,
@@ -464,8 +457,7 @@ plt = plot!(queue_lock_time,
     yaxis = :log,
     linewidth = 2,
     label = "ParallelPSOKernel (queue-lock): GPU",
-    marker = :circle
-    # color = :Orange
+    marker = :circle    # color = :Orange
 )
 
 plt = plot!(hybrid_time,
@@ -474,8 +466,7 @@ plt = plot!(hybrid_time,
     yaxis = :log,
     linewidth = 2,
     label = "HybridPSO-LBFGS: GPU",
-    marker = :circle
-    # color = :Orange
+    marker = :circle    # color = :Orange
 )
 
 plt = plot!(bbo_time,
@@ -484,8 +475,7 @@ plt = plot!(bbo_time,
     # yaxis = :log,
     linewidth = 2,
     label = "BlackboxOptim",
-    marker = :circle
-    # color = :Green
+    marker = :circle    # color = :Green
 )
 
 savefig("wp_algs.svg")

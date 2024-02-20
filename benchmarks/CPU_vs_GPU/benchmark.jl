@@ -205,8 +205,7 @@ plt = plot(Ns,
     xticks = xticks,
     yticks = yticks,
     marker = :circle,
-    dpi = 600
-    # color = :Green
+    dpi = 600    # color = :Green
 )
 
 plt = plot!(Ns,
@@ -216,8 +215,7 @@ plt = plot!(Ns,
     linewidth = 2,
     label = "ParallelSyncPSOKernel: CPU",
     marker = :circle,
-    ls = :dash
-    # color = :Orange
+    ls = :dash    # color = :Orange
 )
 
 plt = plot!(Ns,
@@ -226,8 +224,7 @@ plt = plot!(Ns,
     yaxis = :log,
     linewidth = 2,
     label = "ParallelPSOKernel (Async): GPU",
-    marker = :circle
-    # color = :Green
+    marker = :circle    # color = :Green
 )
 
 plt = plot!(Ns,
@@ -236,8 +233,7 @@ plt = plot!(Ns,
     yaxis = :log,
     linewidth = 2,
     label = "ParallelPSOKernel (Queue-lock): GPU",
-    marker = :circle
-    # color = :Green
+    marker = :circle    # color = :Green
 )
 
 plt = plot!(Ns,
@@ -246,8 +242,7 @@ plt = plot!(Ns,
     yaxis = :log,
     linewidth = 2,
     label = "HybridPSO-LBFGS: GPU",
-    marker = :circle
-    # color = :Green
+    marker = :circle    # color = :Green
 )
 
 savefig("benchmark_hybrid.svg")
