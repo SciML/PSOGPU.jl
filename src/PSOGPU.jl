@@ -8,6 +8,9 @@ import KernelAbstractions: @atomic, @atomicreplace, @atomicswap
 using QuasiMonteCarlo
 import DiffEqGPU: GPUTsit5, make_prob_compatible, vectorized_solve, vectorized_asolve
 
+using Reexport
+@reexport using SciMLBase
+
 ## Use lb and ub either as StaticArray or pass them separately as CuArrays
 ## Passing as CuArrays makes more sense, or maybe SArray? The based on no. of dimension
 struct SPSOParticle{T1, T2 <: eltype(T1)}
@@ -68,5 +71,5 @@ include("./bfgs.jl")
 include("./hybrid.jl")
 
 export ParallelPSOKernel,
-       ParallelSyncPSOKernel, ParallelPSOArray, SerialPSO, OptimizationProblem, solve
+       ParallelSyncPSOKernel, ParallelPSOArray, SerialPSO
 end

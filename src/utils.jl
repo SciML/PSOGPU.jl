@@ -1,9 +1,79 @@
+@inbounds function uniform_itr(
+        dim::Int, lb::AbstractArray{T}, ub::AbstractArray{T}) where {T}
+    (rand(T) * (ub[i] - lb[i]) + lb[i] for i in 1:dim)
+end
+
 function uniform(dim::Int, lb::AbstractArray{T}, ub::AbstractArray{T}) where {T}
     arr = rand(T, dim)
     @inbounds for i in 1:dim
         arr[i] = arr[i] * (ub[i] - lb[i]) + lb[i]
     end
     return arr
+end
+
+function init_particles!(particles, prob, opt, ::Type{T}) where {T <: SArray}
+    dim = length(prob.u0)
+    lb = prob.lb
+    ub = prob.ub
+    cost_func = prob.f
+    p = prob.p
+    num_particles = opt.num_particles
+
+    if lb === nothing || (all(isinf, lb) && all(isinf, ub))
+        gbest_position = StaticArrays.sacollect(T,
+            ifelse(
+                abs(prob.u0[i]) > 0, prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i]),
+                rand(eltype(prob.u0))) for i in 1:dim)
+    else
+        gbest_position = StaticArrays.sacollect(T, uniform_itr(dim, lb, ub))
+    end
+
+    gbest_position = convert(T, gbest_position)
+    gbest_cost = cost_func(gbest_position, p)
+    if !isnothing(prob.f.cons)
+        penalty = calc_penalty(gbest_position, prob, 1, opt.θ, opt.γ, opt.h)
+        gbest_cost = cost_func(gbest_position, p) + penalty
+    else
+        gbest_cost = cost_func(gbest_position, p)
+    end
+    gbest_cost = cost_func(gbest_position, p)
+    # particles = SPSOParticle[]
+
+    if !(lb === nothing || (all(isinf, lb) && all(isinf, ub)))
+        positions = QuasiMonteCarlo.sample(num_particles, lb, ub, LatinHypercubeSample())
+    end
+
+    for i in 1:num_particles
+        if lb === nothing || (all(isinf, lb) && all(isinf, ub))
+            position = StaticArrays.sacollect(T,
+                ifelse(abs(prob.u0[i]) > 0,
+                    prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i]),
+                    rand(eltype(prob.u0))) for i in 1:dim)
+        else
+            @inbounds position = StaticArrays.sacollect(T, positions[j, i] for j in 1:dim)
+        end
+
+        velocity = zero(T)
+
+        if !isnothing(prob.f.cons)
+            penalty = calc_penalty(position, prob, 1, opt.θ, opt.γ, opt.h)
+            cost = cost_func(position, p) + penalty
+        else
+            cost = cost_func(position, p)
+        end
+
+        best_position = position
+        best_cost = cost
+        @inbounds particles[i] = SPSOParticle(
+            position, velocity, cost, best_position, best_cost)
+
+        if best_cost < gbest_cost
+            gbest_position = best_position
+            gbest_cost = best_cost
+        end
+    end
+    gbest = SPSOGBest(gbest_position, gbest_cost)
+    return gbest, particles
 end
 
 function init_particles(prob, opt, ::Type{T}) where {T <: SArray}
@@ -15,27 +85,22 @@ function init_particles(prob, opt, ::Type{T}) where {T <: SArray}
     num_particles = opt.num_particles
 
     if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-        gbest_position = Array{eltype(prob.u0), 1}(undef, dim)
-        for i in 1:dim
-            if abs(prob.u0[i]) > 0
-                gbest_position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
-            else
-                gbest_position[i] = rand(eltype(prob.u0))
-            end
-        end
+        gbest_position = StaticArrays.sacollect(T,
+            ifelse(
+                abs(prob.u0[i]) > 0, prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i]),
+                rand(eltype(prob.u0))) for i in 1:dim)
     else
-        gbest_position = uniform(dim, lb, ub)
+        gbest_position = StaticArrays.sacollect(T, uniform_itr(dim, lb, ub))
     end
 
-    gbest_position = SVector{length(gbest_position), eltype(gbest_position)}(gbest_position)
+    gbest_cost = cost_func(gbest_position, p)
     if !isnothing(prob.f.cons)
         penalty = calc_penalty(gbest_position, prob, 1, opt.θ, opt.γ, opt.h)
         gbest_cost = cost_func(gbest_position, p) + penalty
     else
         gbest_cost = cost_func(gbest_position, p)
     end
-    # gbest_cost = cost_func(gbest_position, p)
-    particles = SPSOParticle[]
+    particles = SPSOParticle{T, eltype(T)}[]
 
     if !(lb === nothing || (all(isinf, lb) && all(isinf, ub)))
         positions = QuasiMonteCarlo.sample(num_particles, lb, ub, LatinHypercubeSample())
@@ -43,19 +108,14 @@ function init_particles(prob, opt, ::Type{T}) where {T <: SArray}
 
     for i in 1:num_particles
         if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-            position = Array{eltype(prob.u0), 1}(undef, dim)
-            for i in 1:dim
-                if abs(prob.u0[i]) > 0
-                    position[i] = prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i])
-                else
-                    position[i] = rand(eltype(prob.u0))
-                end
-            end
+            @inbounds position = StaticArrays.sacollect(T,
+                ifelse(abs(prob.u0[i]) > 0,
+                    prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i]),
+                    rand(eltype(prob.u0))) for i in 1:dim)
         else
-            position = @view positions[:, i]
+            @inbounds position = StaticArrays.sacollect(T, positions[j, i] for j in 1:dim)
         end
-        position = SVector{length(position), eltype(position)}(position)
-        velocity = @SArray zeros(eltype(position), dim)
+        velocity = zero(T)
 
         if !isnothing(prob.f.cons)
             penalty = calc_penalty(position, prob, 1, opt.θ, opt.γ, opt.h)
@@ -74,7 +134,7 @@ function init_particles(prob, opt, ::Type{T}) where {T <: SArray}
         end
     end
     gbest = SPSOGBest(gbest_position, gbest_cost)
-    return gbest, convert(Vector{typeof(particles[1])}, particles)
+    return gbest, particles
 end
 
 function init_particles(prob, opt, ::Type{T}) where {T <: AbstractArray}
