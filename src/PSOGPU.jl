@@ -6,8 +6,7 @@ import Adapt
 import Enzyme: autodiff_deferred, Active, Reverse
 import KernelAbstractions: @atomic, @atomicreplace, @atomicswap
 using QuasiMonteCarlo
-
-import DiffEqGPU: GPUTsit5, vectorized_asolve, make_prob_compatible
+import DiffEqGPU: GPUTsit5, make_prob_compatible, vectorized_solve, vectorized_asolve
 
 ## Use lb and ub either as StaticArray or pass them separately as CuArrays
 ## Passing as CuArrays makes more sense, or maybe SArray? The based on no. of dimension
@@ -69,5 +68,5 @@ include("./bfgs.jl")
 include("./hybrid.jl")
 
 export ParallelPSOKernel,
-    ParallelSyncPSOKernel, ParallelPSOArray, SerialPSO, OptimizationProblem, solve
+       ParallelSyncPSOKernel, ParallelPSOArray, SerialPSO, OptimizationProblem, solve
 end
