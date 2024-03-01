@@ -14,26 +14,49 @@ function SciMLBase.init(
     backend = opt.backend
     @assert prob.u0 isa SArray
 
-    ## initialize cache
-
     ## Bounds check
     lb, ub = check_init_bounds(prob)
     lb, ub = check_init_bounds(prob)
     prob = remake(prob; lb = lb, ub = ub)
 
-    init_gbest, particles = init_particles(prob, opt, typeof(prob.u0))
+    particles = KernelAbstractions.allocate(
+        backend, SPSOParticle{typeof(prob.u0), eltype(typeof(prob.u0))}, opt.num_particles)
+    kernel! = gpu_init_particles!(backend)
 
-    # TODO: Do the equivalent of cu()/roc()
-    particles_eltype = eltype(particles) === Float64 ? Float32 : eltype(particles)
-    gpu_particles = KernelAbstractions.allocate(backend,
-        particles_eltype,
-        size(particles))
-    copyto!(gpu_particles, particles)
-    gpu_init_gbest = KernelAbstractions.allocate(backend, typeof(init_gbest), (1,))
-    copyto!(gpu_init_gbest, [init_gbest])
+    kernel!(particles, prob, opt, typeof(prob.u0); ndrange = opt.num_particles)
+
+    best_particle = minimum(particles)
+    _init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
+
+    init_gbest = KernelAbstractions.allocate(backend, typeof(_init_gbest), (1,))
+    copyto!(init_gbest, [_init_gbest])
     return PSOCache{
-        typeof(prob), typeof(opt), typeof(gpu_particles), typeof(gpu_init_gbest)}(
-        prob, opt, gpu_particles, gpu_init_gbest)
+        typeof(prob), typeof(opt), typeof(particles), typeof(init_gbest)}(
+        prob, opt, particles, init_gbest)
+end
+
+function SciMLBase.reinit!(cache::PSOCache; kwargs...)
+    reinit_cache!(cache, cache.alg)
+end
+
+function reinit_cache!(cache::PSOCache, opt::ParallelPSOKernel)
+    prob = cache.prob
+    backend = opt.backend
+    particles = cache.particles
+
+    kernel! = PSOGPU.gpu_init_particles!(backend)
+    kernel!(particles, prob, opt, typeof(prob.u0); ndrange = opt.num_particles)
+
+    best_particle = minimum(particles)
+    _init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
+
+    copyto!(cache.gbest, [_init_gbest])
+
+    return nothing
+end
+
+function SciMLBase.solve!(cache, args...; maxiters = 100, kwargs...)
+    solve!(cache, cache.alg, args...; maxiters, kwargs...)
 end
 
 function SciMLBase.solve!(
