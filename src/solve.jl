@@ -36,32 +36,6 @@ function SciMLBase.init(
 end
 
 function SciMLBase.init(
-        prob::OptimizationProblem, opt::ParallelPSOKernel, args...; kwargs...)
-    backend = opt.backend
-    @assert prob.u0 isa SArray
-
-    ## Bounds check
-    lb, ub = check_init_bounds(prob)
-    lb, ub = check_init_bounds(prob)
-    prob = remake(prob; lb = lb, ub = ub)
-
-    particles = KernelAbstractions.allocate(
-        backend, SPSOParticle{typeof(prob.u0), eltype(typeof(prob.u0))}, opt.num_particles)
-    kernel! = gpu_init_particles!(backend)
-
-    kernel!(particles, prob, opt, typeof(prob.u0); ndrange = opt.num_particles)
-
-    best_particle = minimum(particles)
-    _init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
-
-    init_gbest = KernelAbstractions.allocate(backend, typeof(_init_gbest), (1,))
-    copyto!(init_gbest, [_init_gbest])
-    return PSOCache{
-        typeof(prob), typeof(opt), typeof(particles), typeof(init_gbest)}(
-        prob, opt, particles, init_gbest)
-end
-
-function SciMLBase.init(
         prob::OptimizationProblem, opt::ParallelSyncPSOKernel, args...; kwargs...)
     backend = opt.backend
     @assert prob.u0 isa SArray
@@ -85,7 +59,7 @@ function SciMLBase.init(
         prob, opt, particles, init_gbest)
 end
 
-function SciMLBase.reinit!(cache::PSOCache; kwargs...)
+function SciMLBase.reinit!(cache::Union{PSOCache, HybridPSOCache}; kwargs...)
     reinit_cache!(cache, cache.alg)
 end
 
@@ -122,7 +96,8 @@ function reinit_cache!(cache::PSOCache, opt::ParallelSyncPSOKernel)
     return nothing
 end
 
-function SciMLBase.solve!(cache, args...; maxiters = 100, kwargs...)
+function SciMLBase.solve!(
+        cache::Union{PSOCache, HybridPSOCache}, args...; maxiters = 100, kwargs...)
     solve!(cache, cache.alg, args...; maxiters, kwargs...)
 end
 
@@ -150,8 +125,8 @@ function SciMLBase.solve!(
     prob = cache.prob
     t0 = time()
     gbest, particles = vectorized_solve!(prob,
-        init_gbest,
-        gpu_particles,
+        cache.gbest,
+        cache.particles,
         opt,
         args...;
         kwargs...)
@@ -163,7 +138,8 @@ function SciMLBase.solve!(
         stats = Optimization.OptimizationStats(; time = t1 - t0))
 end
 
-function SciMLBase.solve(prob::OptimizationProblem, opt::ParallelPSOKernel,
+function SciMLBase.solve(prob::OptimizationProblem,
+        opt::Union{ParallelPSOKernel, ParallelSyncPSOKernel, HybridPSO},
         args...; maxiters = 100, kwargs...)
     solve!(init(prob, opt, args...; maxiters, kwargs...), opt)
 end
