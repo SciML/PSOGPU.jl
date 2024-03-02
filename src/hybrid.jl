@@ -5,12 +5,6 @@
     result[i] = sol.u
 end
 
-struct HybridPSOCache{TPc, TSp, TAlg}
-    pso_cache::TPc
-    start_points::TSp
-    alg::TAlg
-end
-
 function SciMLBase.init(
         prob::OptimizationProblem, opt::HybridPSO{Backend, LocalOpt}, args...;
         kwargs...) where {Backend, LocalOpt <: Union{LBFGS, BFGS}}
@@ -67,7 +61,6 @@ function SciMLBase.solve!(
         reltol = nothing,
         maxiters = 100, local_maxiters = 10, kwargs...) where {
         Backend, LocalOpt <: Union{LBFGS, BFGS}}
-
     pso_cache = cache.pso_cache
 
     sol_pso = solve!(pso_cache)

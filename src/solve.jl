@@ -1,12 +1,16 @@
 function get_pos(particle)
     return particle.position
 end
-
 mutable struct PSOCache{TP, TAlg, TPart, TGbest}
     prob::TP
     alg::TAlg
     particles::TPart
     gbest::TGbest
+end
+struct HybridPSOCache{TPc, TSp, TAlg}
+    pso_cache::TPc
+    start_points::TSp
+    alg::TAlg
 end
 
 function SciMLBase.init(
