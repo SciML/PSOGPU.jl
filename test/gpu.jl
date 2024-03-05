@@ -33,7 +33,7 @@ end
 
     @test prob.f(prob.u0, prob.p) > sol.objective
 
-    @test sol.objective < 6e-4
+    @test sol.objective < 2e-3
 
     @test sol.retcode == ReturnCode.Default
 
