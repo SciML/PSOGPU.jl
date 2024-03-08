@@ -24,32 +24,13 @@ end
     i = @index(Global, Linear)
 
     dim = length(prob.u0)
-    lb = prob.lb
-    ub = prob.ub
     cost_func = prob.f
     p = prob.p
-
-    # gbest_position = StaticArrays.sacollect(T,
-    # ifelse(
-    #     abs(prob.u0[i]) > 0, prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i]),
-    #     rand(eltype(prob.u0))) for i in 1:dim)
-
-    # gbest_position = convert(T, gbest_position)
-    # gbest_cost = cost_func(gbest_position, p)
-    # if !isnothing(prob.f.cons)
-    #     penalty = calc_penalty(gbest_position, prob, 1, opt.θ, opt.γ, opt.h)
-    #     gbest_cost = cost_func(gbest_position, p) + penalty
-    # else
-    #     gbest_cost = cost_func(gbest_position, p)
-    # end
-    # gbest_cost = cost_func(gbest_position, p)
 
     position = StaticArrays.sacollect(T,
         ifelse(abs(prob.u0[i]) > 0,
             prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i]),
             rand(eltype(prob.u0))) for i in 1:dim)
-
-    # KernelAbstractions.@print "$(position[1]) \n"
 
     velocity = zero(T)
 
@@ -76,33 +57,7 @@ end
     cost_func = prob.f
     p = prob.p
 
-    if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-        gbest_position = StaticArrays.sacollect(T,
-            ifelse(
-                abs(prob.u0[i]) > 0, prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i]),
-                rand(eltype(prob.u0))) for i in 1:dim)
-    else
-        gbest_position = StaticArrays.sacollect(T, uniform_itr(dim, lb, ub))
-    end
-
-    gbest_position = convert(T, gbest_position)
-    gbest_cost = cost_func(gbest_position, p)
-    if !isnothing(prob.f.cons)
-        penalty = calc_penalty(gbest_position, prob, 1, opt.θ, opt.γ, opt.h)
-        gbest_cost = cost_func(gbest_position, p) + penalty
-    else
-        gbest_cost = cost_func(gbest_position, p)
-    end
-    gbest_cost = cost_func(gbest_position, p)
-
-    if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-        position = StaticArrays.sacollect(T,
-            ifelse(abs(prob.u0[i]) > 0,
-                prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i]),
-                rand(eltype(prob.u0))) for i in 1:dim)
-    else
-        position = StaticArrays.sacollect(T, uniform_itr(dim, lb, ub))
-    end
+    position = StaticArrays.sacollect(T, uniform_itr(dim, lb, ub))
 
     velocity = zero(T)
 
@@ -124,11 +79,8 @@ end
     i = @index(Global, Linear)
 
     dim = length(prob.u0)
-    lb = prob.lb
-    ub = prob.ub
     cost_func = prob.f
     p = prob.p
-    num_particles = opt.num_particles
 
     @inbounds position = StaticArrays.sacollect(T, qmc_particles[j, i] for j in 1:dim)
     velocity = zero(T)
@@ -145,62 +97,8 @@ end
 
     @inbounds particles[i] = SPSOParticle(
         position, velocity, cost, best_position, best_cost)
-    # push!(particles, SPSOParticle(position, velocity, cost, best_position, best_cost))
 
 end
-
-# @kernel function gpu_init_particles!(gpu_particles, prob, opt, ::Type{T}) where {T <: SArray}
-#     i = @index(Global, Linear)
-
-#     dim = length(prob.u0)
-#     lb = prob.lb
-#     ub = prob.ub
-#     cost_func = prob.f
-#     p = prob.p
-#     num_particles = opt.num_particles
-
-#     if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-#         gbest_position = StaticArrays.sacollect(T,
-#             ifelse(
-#                 abs(prob.u0[i]) > 0, prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i]),
-#                 rand(eltype(prob.u0))) for i in 1:dim)
-#     else
-#         gbest_position = StaticArrays.sacollect(T, uniform_itr(dim, lb, ub))
-#     end
-
-#     gbest_position = convert(T, gbest_position)
-#     gbest_cost = cost_func(gbest_position, p)
-#     if !isnothing(prob.f.cons)
-#         penalty = calc_penalty(gbest_position, prob, 1, opt.θ, opt.γ, opt.h)
-#         gbest_cost = cost_func(gbest_position, p) + penalty
-#     else
-#         gbest_cost = cost_func(gbest_position, p)
-#     end
-#     gbest_cost = cost_func(gbest_position, p)
-
-#     if lb === nothing || (all(isinf, lb) && all(isinf, ub))
-#         position = StaticArrays.sacollect(T,
-#             ifelse(abs(prob.u0[i]) > 0,
-#                 prob.u0[i] + rand(eltype(prob.u0)) * abs(prob.u0[i]),
-#                 rand(eltype(prob.u0))) for i in 1:dim)
-#     else
-#         position = StaticArrays.sacollect(T, uniform_itr(dim, lb, ub))
-#     end
-
-#     velocity = zero(T)
-
-#     if !isnothing(prob.f.cons)
-#         penalty = calc_penalty(position, prob, 1, opt.θ, opt.γ, opt.h)
-#         cost = cost_func(position, p) + penalty
-#     else
-#         cost = cost_func(position, p)
-#     end
-
-#     best_position = position
-#     best_cost = cost
-#     @inbounds particles[i] = SPSOParticle(
-#         position, velocity, cost, best_position, best_cost)
-# end
 
 function init_particles!(particles, prob, opt, ::Type{T}) where {T <: SArray}
     dim = length(prob.u0)
