@@ -13,21 +13,21 @@ struct HybridPSOCache{TPc, TSp, TAlg}
     alg::TAlg
 end
 
-function SciMLBase.init(
-        prob::OptimizationProblem, opt::ParallelPSOKernel, args...; kwargs...)
+function __init(prob::OptimizationProblem, opt::ParallelPSOKernel, sampler::T,
+        args...; kwargs...) where {T <: QuasiMonteCarlo.SamplingAlgorithm}
     backend = opt.backend
-    @assert prob.u0 isa SArray
-
-    ## Bounds check
-    lb, ub = check_init_bounds(prob)
-    lb, ub = check_init_bounds(prob)
-    prob = remake(prob; lb = lb, ub = ub)
 
     particles = KernelAbstractions.allocate(
         backend, SPSOParticle{typeof(prob.u0), eltype(typeof(prob.u0))}, opt.num_particles)
+
+    qmc_samples = QuasiMonteCarlo.sample(opt.num_particles, prob.lb, prob.ub, sampler)
+
+    qmc_samples = adapt(backend, qmc_samples)
+
     kernel! = gpu_init_particles!(backend)
 
-    kernel!(particles, prob, opt, typeof(prob.u0); ndrange = opt.num_particles)
+    kernel!(
+        particles, qmc_samples, prob, opt, typeof(prob.u0), T; ndrange = opt.num_particles)
 
     best_particle = minimum(particles)
     _init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
@@ -37,6 +37,43 @@ function SciMLBase.init(
     return PSOCache{
         typeof(prob), typeof(opt), typeof(particles), typeof(init_gbest)}(
         prob, opt, particles, init_gbest)
+end
+
+function __init(prob::OptimizationProblem, opt::ParallelPSOKernel, sampler::T,
+        args...; kwargs...) where {T <: GPUSamplingAlgorithm}
+    backend = opt.backend
+
+    particles = KernelAbstractions.allocate(
+        backend, SPSOParticle{typeof(prob.u0), eltype(typeof(prob.u0))}, opt.num_particles)
+    kernel! = gpu_init_particles!(backend)
+
+    kernel!(particles, prob, opt, typeof(prob.u0), T; ndrange = opt.num_particles)
+
+    best_particle = minimum(particles)
+
+    _init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
+
+    init_gbest = KernelAbstractions.allocate(backend, typeof(_init_gbest), (1,))
+    copyto!(init_gbest, [_init_gbest])
+    return PSOCache{
+        typeof(prob), typeof(opt), typeof(particles), typeof(init_gbest)}(
+        prob, opt, particles, init_gbest)
+end
+
+function SciMLBase.init(
+        prob::OptimizationProblem, opt::ParallelPSOKernel, args...; sampler = GPUUniformSampler(), kwargs...)
+    @assert prob.u0 isa SArray
+
+    ## Bounds check
+    lb, ub = check_init_bounds(prob)
+    lb, ub = check_init_bounds(prob)
+    prob = remake(prob; lb = lb, ub = ub)
+
+    if lb === nothing || ub === nothing || (all(isinf, lb) && all(isinf, ub))
+        __init(prob, opt, GPUUnboundedSampler(), args...; kwargs...)
+    else
+        __init(prob, opt, sampler, args...; kwargs...)
+    end
 end
 
 function SciMLBase.init(

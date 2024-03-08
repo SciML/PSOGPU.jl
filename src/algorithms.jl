@@ -1,6 +1,14 @@
 
 abstract type PSOAlgorithm end
 abstract type HybridPSOAlgorithm{LocalOpt} end
+abstract type GPUSamplingAlgorithm end
+
+struct GPUUniformSampler <: GPUSamplingAlgorithm
+end
+
+struct GPUUnboundedSampler <: GPUSamplingAlgorithm
+end
+
 """
 ```julia
 ParallelPSOKernel(num_particles = 100)
