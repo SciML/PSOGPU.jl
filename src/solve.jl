@@ -13,7 +13,8 @@ struct HybridPSOCache{TPc, TSp, TAlg}
     alg::TAlg
 end
 
-function __init(prob::OptimizationProblem, opt::ParallelPSOKernel, sampler::T,
+function __init(prob::OptimizationProblem,
+        opt::Union{ParallelPSOKernel, ParallelSyncPSOKernel}, sampler::T,
         args...; kwargs...) where {T <: QuasiMonteCarlo.SamplingAlgorithm}
     backend = opt.backend
 
@@ -30,16 +31,13 @@ function __init(prob::OptimizationProblem, opt::ParallelPSOKernel, sampler::T,
         particles, qmc_samples, prob, opt, typeof(prob.u0), T; ndrange = opt.num_particles)
 
     best_particle = minimum(particles)
-    _init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
+    init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
 
-    init_gbest = KernelAbstractions.allocate(backend, typeof(_init_gbest), (1,))
-    copyto!(init_gbest, [_init_gbest])
-    return PSOCache{
-        typeof(prob), typeof(opt), typeof(particles), typeof(init_gbest)}(
-        prob, opt, particles, init_gbest)
+    return particles, init_gbest
 end
 
-function __init(prob::OptimizationProblem, opt::ParallelPSOKernel, sampler::T,
+function __init(prob::OptimizationProblem,
+        opt::Union{ParallelPSOKernel, ParallelSyncPSOKernel}, sampler::T,
         args...; kwargs...) where {T <: GPUSamplingAlgorithm}
     backend = opt.backend
 
@@ -51,13 +49,9 @@ function __init(prob::OptimizationProblem, opt::ParallelPSOKernel, sampler::T,
 
     best_particle = minimum(particles)
 
-    _init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
+    init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
 
-    init_gbest = KernelAbstractions.allocate(backend, typeof(_init_gbest), (1,))
-    copyto!(init_gbest, [_init_gbest])
-    return PSOCache{
-        typeof(prob), typeof(opt), typeof(particles), typeof(init_gbest)}(
-        prob, opt, particles, init_gbest)
+    particles, init_gbest
 end
 
 function SciMLBase.init(
@@ -69,16 +63,23 @@ function SciMLBase.init(
     lb, ub = check_init_bounds(prob)
     prob = remake(prob; lb = lb, ub = ub)
 
-    if lb === nothing || ub === nothing || (all(isinf, lb) && all(isinf, ub))
+    particles, _init_gbest = if lb === nothing || ub === nothing ||
+                                (all(isinf, lb) && all(isinf, ub))
         __init(prob, opt, GPUUnboundedSampler(), args...; kwargs...)
     else
         __init(prob, opt, sampler, args...; kwargs...)
     end
+
+    init_gbest = KernelAbstractions.allocate(opt.backend, typeof(_init_gbest), (1,))
+    copyto!(init_gbest, [_init_gbest])
+
+    return PSOCache{
+        typeof(prob), typeof(opt), typeof(particles), typeof(init_gbest)}(
+        prob, opt, particles, init_gbest)
 end
 
 function SciMLBase.init(
-        prob::OptimizationProblem, opt::ParallelSyncPSOKernel, args...; kwargs...)
-    backend = opt.backend
+        prob::OptimizationProblem, opt::ParallelSyncPSOKernel, args...; sampler = GPUUniformSampler(), kwargs...)
     @assert prob.u0 isa SArray
 
     ## Bounds check
@@ -86,19 +87,41 @@ function SciMLBase.init(
     lb, ub = check_init_bounds(prob)
     prob = remake(prob; lb = lb, ub = ub)
 
-    particles = KernelAbstractions.allocate(
-        backend, SPSOParticle{typeof(prob.u0), eltype(typeof(prob.u0))}, opt.num_particles)
-    kernel! = gpu_init_particles!(backend)
-
-    kernel!(particles, prob, opt, typeof(prob.u0); ndrange = opt.num_particles)
-
-    best_particle = minimum(particles)
-    init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
+    particles, init_gbest = if lb === nothing || ub === nothing ||
+                               (all(isinf, lb) && all(isinf, ub))
+        __init(prob, opt, GPUUnboundedSampler(), args...; kwargs...)
+    else
+        __init(prob, opt, sampler, args...; kwargs...)
+    end
 
     return PSOCache{
         typeof(prob), typeof(opt), typeof(particles), typeof(init_gbest)}(
         prob, opt, particles, init_gbest)
 end
+
+# function SciMLBase.init(
+#         prob::OptimizationProblem, opt::ParallelSyncPSOKernel, args...; kwargs...)
+#     backend = opt.backend
+#     @assert prob.u0 isa SArray
+
+#     ## Bounds check
+#     lb, ub = check_init_bounds(prob)
+#     lb, ub = check_init_bounds(prob)
+#     prob = remake(prob; lb = lb, ub = ub)
+
+#     particles = KernelAbstractions.allocate(
+#         backend, SPSOParticle{typeof(prob.u0), eltype(typeof(prob.u0))}, opt.num_particles)
+#     kernel! = gpu_init_particles!(backend)
+
+#     kernel!(particles, prob, opt, typeof(prob.u0); ndrange = opt.num_particles)
+
+#     best_particle = minimum(particles)
+#     init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
+
+#     return PSOCache{
+#         typeof(prob), typeof(opt), typeof(particles), typeof(init_gbest)}(
+#         prob, opt, particles, init_gbest)
+# end
 
 function SciMLBase.reinit!(cache::Union{PSOCache, HybridPSOCache}; kwargs...)
     reinit_cache!(cache, cache.alg)
@@ -170,6 +193,7 @@ function SciMLBase.solve!(
         cache.particles,
         opt,
         args...;
+        maxiters,
         kwargs...)
     t1 = time()
 
@@ -182,7 +206,7 @@ end
 function SciMLBase.solve(prob::OptimizationProblem,
         opt::Union{ParallelPSOKernel, ParallelSyncPSOKernel, HybridPSO},
         args...; maxiters = 100, kwargs...)
-    solve!(init(prob, opt, args...; maxiters, kwargs...), opt)
+    solve!(init(prob, opt, args...; kwargs...), opt, args...; maxiters, kwargs...)
 end
 
 function SciMLBase.__solve(prob::OptimizationProblem,

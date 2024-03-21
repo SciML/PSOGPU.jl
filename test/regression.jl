@@ -1,4 +1,5 @@
 using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random, KernelAbstractions
+using QuasiMonteCarlo
 
 @testset "Rosenbrock test dimension = $(N)" for N in 2:3
 
@@ -36,11 +37,25 @@ using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random, KernelAbstra
 
     @test sol.objective < 1e-4
 
+    sol = solve!(
+        init(prob, ParallelPSOKernel(n_particles; backend = CPU());
+            sampler = LatinHypercubeSample()),
+        maxiters = 500)
+
+    @test sol.retcode == ReturnCode.Default
+
     sol = solve(prob,
         ParallelPSOKernel(n_particles; backend = CPU()),
         maxiters = 500)
 
     @test sol.objective < 1e-4
+
+    sol = solve!(
+        init(prob, ParallelSyncPSOKernel(n_particles; backend = CPU());
+            sampler = LatinHypercubeSample()),
+        maxiters = 500)
+
+    @test sol.retcode == ReturnCode.Default
 
     sol = solve(prob,
         ParallelSyncPSOKernel(n_particles; backend = CPU()),
@@ -66,11 +81,25 @@ using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random, KernelAbstra
 
     @test sol.objective < 1e-4
 
+    sol = solve!(
+        init(prob, ParallelPSOKernel(n_particles; backend = CPU());
+            sampler = LatinHypercubeSample()),
+        maxiters = 500)
+
+    @test sol.retcode == ReturnCode.Default
+
     sol = solve(prob,
         ParallelPSOKernel(n_particles; backend = CPU()),
         maxiters = 500)
 
     @test sol.objective < 1e-4
+
+    sol = solve!(
+        init(prob, ParallelSyncPSOKernel(n_particles; backend = CPU());
+            sampler = LatinHypercubeSample()),
+        maxiters = 500)
+
+    @test sol.retcode == ReturnCode.Default
 
     sol = solve(prob,
         ParallelSyncPSOKernel(n_particles; backend = CPU()),
@@ -93,11 +122,23 @@ using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random, KernelAbstra
 
     @test sol.objective < 1e-4
 
+    sol = solve!(
+        init(prob, ParallelPSOKernel(n_particles; backend = CPU());
+            sampler = LatinHypercubeSample()),
+        maxiters = 500)
+
+    @test sol.retcode == ReturnCode.Default
+
     sol = solve(prob,
         ParallelPSOKernel(n_particles; backend = CPU()),
         maxiters = 500)
 
     @test sol.objective < 1e-4
+
+    sol = solve!(
+        init(prob, ParallelSyncPSOKernel(n_particles; backend = CPU());
+            sampler = LatinHypercubeSample()),
+        maxiters = 500)
 
     sol = solve(prob,
         ParallelSyncPSOKernel(n_particles; backend = CPU()),
@@ -138,11 +179,25 @@ end
 
     @test sol.objective < 2e-3
 
+    sol = solve!(
+        init(prob, ParallelPSOKernel(n_particles; backend = CPU());
+            sampler = LatinHypercubeSample()),
+        maxiters = 2000)
+
+    @test sol.retcode == ReturnCode.Default
+
     sol = solve(prob,
         ParallelPSOKernel(n_particles; backend = CPU()),
         maxiters = 2000)
 
     @test sol.objective < 2e-2
+
+    sol = solve!(
+        init(prob, ParallelSyncPSOKernel(n_particles; backend = CPU());
+            sampler = LatinHypercubeSample()),
+        maxiters = 2000)
+
+    @test sol.retcode == ReturnCode.Default
 
     sol = solve(prob,
         ParallelSyncPSOKernel(n_particles; backend = CPU()),
@@ -171,11 +226,25 @@ end
 
     @test sol.objective < 2e-3
 
+    sol = solve!(
+        init(prob, ParallelPSOKernel(n_particles; backend = CPU());
+            sampler = LatinHypercubeSample()),
+        maxiters = 1000)
+
+    @test sol.retcode == ReturnCode.Default
+
     sol = solve(prob,
         ParallelPSOKernel(n_particles; backend = CPU()),
         maxiters = 1000)
 
     @test sol.objective < 2e-3
+
+    sol = solve!(
+        init(prob, ParallelSyncPSOKernel(n_particles; backend = CPU());
+            sampler = LatinHypercubeSample()),
+        maxiters = 2000)
+
+    @test sol.retcode == ReturnCode.Default
 
     sol = solve(prob,
         ParallelSyncPSOKernel(n_particles; backend = CPU()),

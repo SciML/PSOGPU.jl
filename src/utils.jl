@@ -97,7 +97,6 @@ end
 
     @inbounds particles[i] = SPSOParticle(
         position, velocity, cost, best_position, best_cost)
-
 end
 
 function init_particles!(particles, prob, opt, ::Type{T}) where {T <: SArray}
