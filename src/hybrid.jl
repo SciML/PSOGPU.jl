@@ -5,27 +5,26 @@
     result[i] = sol.u
 end
 
-function SciMLBase.__solve(prob::SciMLBase.OptimizationProblem,
-        opt::HybridPSO{Backend, LocalOpt},
-        args...;
+function SciMLBase.solve!(
+        cache::HybridPSOCache, opt::HybridPSO{Backend, LocalOpt}, args...;
         abstol = nothing,
         reltol = nothing,
-        maxiters = 100,
-        local_maxiters = 10,
-        kwargs...) where {Backend, LocalOpt <: Union{LBFGS, BFGS}}
-    t0 = time()
-    psoalg = opt.pso
-    local_opt = opt.local_opt
+        maxiters = 100, local_maxiters = 10, kwargs...) where {
+        Backend, LocalOpt <: Union{LBFGS, BFGS}}
+    pso_cache = cache.pso_cache
+
+    sol_pso = solve!(pso_cache)
+    x0s = sol_pso.original
+
     backend = opt.backend
 
-    sol_pso = solve(prob, psoalg, args...; maxiters, kwargs...)
-    x0s = sol_pso.original
-    prob = remake(prob, lb = nothing, ub = nothing)
+    prob = remake(cache.prob, lb = nothing, ub = nothing)
     f = Base.Fix2(prob.f.f, prob.p)
     ∇f = instantiate_gradient(f, prob.f.adtype)
 
     kernel = simplebfgs_run!(backend)
-    result = KernelAbstractions.allocate(backend, typeof(prob.u0), length(x0s))
+    result = cache.start_points
+    copyto!(result, x0s)
     nlprob = NonlinearProblem{false}(∇f, prob.u0)
 
     nlalg = LocalOpt isa LBFGS ?

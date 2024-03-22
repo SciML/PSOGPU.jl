@@ -3,10 +3,14 @@ module PSOGPU
 using SciMLBase, StaticArrays, Setfield, KernelAbstractions
 using QuasiMonteCarlo, Optimization, SimpleNonlinearSolve, ForwardDiff
 import Adapt
+import Adapt: adapt
 import Enzyme: autodiff_deferred, Active, Reverse
 import KernelAbstractions: @atomic, @atomicreplace, @atomicswap
 using QuasiMonteCarlo
 import DiffEqGPU: GPUTsit5, make_prob_compatible, vectorized_solve, vectorized_asolve
+
+using Reexport
+@reexport using SciMLBase
 
 ## Use lb and ub either as StaticArray or pass them separately as CuArrays
 ## Passing as CuArrays makes more sense, or maybe SArray? The based on no. of dimension
@@ -63,10 +67,11 @@ include("./utils.jl")
 include("./ode_pso.jl")
 include("./kernels.jl")
 include("./lowerlevel_solve.jl")
+include("init.jl")
 include("./solve.jl")
 include("./bfgs.jl")
 include("./hybrid.jl")
 
 export ParallelPSOKernel,
-       ParallelSyncPSOKernel, ParallelPSOArray, SerialPSO, OptimizationProblem, solve
+       ParallelSyncPSOKernel, ParallelPSOArray, SerialPSO
 end
