@@ -5,56 +5,6 @@
     result[i] = sol.u
 end
 
-function SciMLBase.init(
-        prob::OptimizationProblem, opt::HybridPSO{Backend, LocalOpt}, args...;
-        kwargs...) where {Backend, LocalOpt <: Union{LBFGS, BFGS}}
-    psoalg = opt.pso
-    backend = opt.backend
-
-    pso_cache = init(prob, psoalg)
-
-    start_points = KernelAbstractions.allocate(
-        backend, typeof(prob.u0), opt.pso.num_particles)
-
-    return HybridPSOCache{
-        typeof(pso_cache), typeof(start_points), typeof(opt)}(pso_cache, start_points, opt)
-end
-
-function reinit_cache!(cache::HybridPSOCache,
-        opt::HybridPSO{Backend, LocalOpt}) where {Backend, LocalOpt <: Union{LBFGS, BFGS}}
-    reinit!(cache.pso_cache)
-    fill!(cache.start_points, zero(eltype(cache.start_points)))
-    # prob = cache.prob
-    # backend = opt.backend
-    # particles = cache.particles
-
-    # kernel! = PSOGPU.gpu_init_particles!(backend)
-    # kernel!(particles, prob, opt, typeof(prob.u0); ndrange = opt.num_particles)
-
-    # best_particle = minimum(particles)
-    # _init_gbest = SPSOGBest(best_particle.best_position, best_particle.best_cost)
-
-    # copyto!(cache.gbest, [_init_gbest])
-
-    return nothing
-end
-
-function Base.getproperty(cache::HybridPSOCache, name::Symbol)
-    if name ∈ (:start_points, :pso_cache, :alg)
-        return getfield(cache, name)
-    else
-        return getproperty(cache.pso_cache, name)
-    end
-end
-
-function Base.setproperty!(cache::HybridPSOCache, name::Symbol, val)
-    if name ∈ (:start_points, :pso_cache, :alg)
-        return setfield!(cache, name, val)
-    else
-        return setproperty!(cache.pso_cache, name, val)
-    end
-end
-
 function SciMLBase.solve!(
         cache::HybridPSOCache, opt::HybridPSO{Backend, LocalOpt}, args...;
         abstol = nothing,
