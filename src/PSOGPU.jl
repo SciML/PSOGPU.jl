@@ -1,6 +1,6 @@
 module PSOGPU
 
-using SciMLBase, StaticArrays, Setfield, KernelAbstractions
+using SciMLBase, StaticArrays, Setfield, KernelAbstractions, OrdinaryDiffEq
 using QuasiMonteCarlo, Optimization, SimpleNonlinearSolve, ForwardDiff
 import Adapt
 import Adapt: adapt
@@ -64,13 +64,13 @@ end
 
 include("./algorithms.jl")
 include("./utils.jl")
-include("./ode_pso.jl")
 include("./kernels.jl")
 include("./lowerlevel_solve.jl")
 include("init.jl")
 include("./solve.jl")
 include("./bfgs.jl")
 include("./hybrid.jl")
+include("./ode_pso.jl")
 
 export ParallelPSOKernel,
        ParallelSyncPSOKernel, ParallelPSOArray, SerialPSO

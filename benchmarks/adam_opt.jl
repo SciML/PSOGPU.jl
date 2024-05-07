@@ -58,7 +58,7 @@ optprob = Optimization.OptimizationProblem(optf, p_nn)
 @time res = Optimization.solve(optprob, ADAM(0.05), maxiters = 100)
 @show res.objective
 
-@benchmark Optimization.solve(optprob, ADAM(0.05), maxiters = 100)
+# @benchmark Optimization.solve(optprob, ADAM(0.05), maxiters = 100)
 
 ## PSOGPU stuff
 
@@ -129,16 +129,16 @@ solver_cache = (; losses, gpu_particles, gpu_data, gbest)
     prob_func = prob_func,
     maxiters = 100)
 
-@benchmark PSOGPU.parameter_estim_ode!($prob_nn,
-    $(deepcopy(solver_cache)),
-    $lb,
-    $ub;
-    saveat = tsteps,
-    dt = 0.1f0,
-    prob_func = prob_func,
-    maxiters = 100)
+# @benchmark PSOGPU.parameter_estim_ode!($prob_nn,
+#     $(deepcopy(solver_cache)),
+#     $lb,
+#     $ub;
+#     saveat = tsteps,
+#     dt = 0.1f0,
+#     prob_func = prob_func,
+#     maxiters = 100)
 
-@show gsol.best
+@show gsol.cost
 
 using Plots
 
@@ -151,7 +151,16 @@ using Plots
 plt = scatter(tsteps, data[1, :], label = "data")
 
 pred_pso = predict_neuralode((sc, gsol.position))
-scatter!(plt, tsteps, pred[1, :], label = "PSO prediction")
+scatter!(plt, tsteps, pred_pso[1, :], label = "PSO prediction")
 
 pred_adam = predict_neuralode((sc, res.u))
 scatter!(plt, tsteps, pred_adam[1, :], label = "Adam prediction")
+
+@time gsol1 = PSOGPU.parameter_estim_odehybrid(prob_nn,
+solver_cache,
+lb,
+ub;
+saveat = tsteps,
+dt = 0.1f0,
+prob_func = prob_func,
+maxiters = 100)
