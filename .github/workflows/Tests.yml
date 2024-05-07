@@ -18,6 +18,10 @@ jobs:
   tests:
     name: "Tests"
     uses: "SciML/.github/.github/workflows/tests.yml@v1"
+    with:
+        julia-arch: "x64"
+        julia-version: "1"
+        os: "ubuntu-latest"
     secrets: "inherit"
 
   test:
