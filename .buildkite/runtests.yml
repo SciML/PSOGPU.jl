@@ -4,6 +4,7 @@ steps:
       setup:
         version:
           - "1"
+          - "lts"
     env:
       GROUP: CUDA
     plugins:
