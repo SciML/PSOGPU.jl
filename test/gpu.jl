@@ -1,14 +1,6 @@
 using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random
 
-DEVICE = get(ENV, "GROUP", "CUDA")
-
-@eval using $(Symbol(DEVICE))
-
-if DEVICE == "CUDA"
-    backend = CUDABackend()
-elseif DEVICE == "AMDGPU"
-    backend = ROCBackend()
-end
+include("./utils.jl")
 
 @testset "Rosenbrock GPU tests $(N)" for N in 2:4
     Random.seed!(1234)
@@ -19,7 +11,11 @@ end
     ub = @SArray fill(Float32(10.0), N)
 
     function rosenbrock(x, p)
-        sum(p[2] * (x[i + 1] - x[i]^2)^2 + (p[1] - x[i])^2 for i in 1:(length(x) - 1))
+        res = zero(eltype(x))
+        for i in 1:(length(x) - 1)
+            res += p[2] * (x[i + 1] - x[i]^2)^2 + (p[1] - x[i])^2
+        end
+        res
     end
 
     x0 = @SArray zeros(Float32, N)

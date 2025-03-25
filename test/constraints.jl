@@ -1,14 +1,6 @@
 using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random
 
-DEVICE = get(ENV, "GROUP", "CUDA")
-
-@eval using $(Symbol(DEVICE))
-
-if DEVICE == "CUDA"
-    backend = CUDABackend()
-elseif DEVICE == "AMDGPU"
-    backend = ROCBackend()
-end
+include("./utils.jl")
 
 Random.seed!(1234)
 

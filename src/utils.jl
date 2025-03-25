@@ -1,3 +1,8 @@
+import SciMLBase: @add_kwonly, AbstractNonlinearProblem, AbstractNonlinearFunction,
+                  AbstractODEFunction, AbstractODEProblem, warn_paramtype, ConstructionBase,
+                  NullParameters, StandardNonlinearProblem, @reset, updated_u0_p,
+                  remake_initialization_data, maybe_eager_initialize_problem
+
 @inbounds function uniform_itr(
         dim::Int, lb::AbstractArray{T}, ub::AbstractArray{T}) where {T}
     (rand(T) * (ub[i] - lb[i]) + lb[i] for i in 1:dim)
@@ -342,10 +347,12 @@ Based on the paper: Particle swarm optimization method for constrained optimizat
     penalty
 end
 
+#TODO: Possible migration to DifferentiationInterface.jl,
+# however I cannot compile GPU-compatible gradients with Enzyme as Mar 2025
 @inline function instantiate_gradient(f, adtype::AutoForwardDiff)
-    (θ, p) -> ForwardDiff.gradient(f, θ)
+    (θ, p) -> ForwardDiff.gradient(x -> f(x, p), θ)
 end
 
 @inline function instantiate_gradient(f, adtype::AutoEnzyme)
-    (θ, p) -> autodiff_deferred(Reverse, f, Active, Active(θ))[1][1]
+    (θ, p) -> autodiff_deferred(Reverse, Const(x -> f(x, p)), Active, Active(θ))[1][1]
 end

@@ -2,7 +2,7 @@
     i = @index(Global, Linear)
     nlcache = remake(nlprob; u0 = x0s[i])
     sol = solve(nlcache, opt; maxiters, abstol, reltol)
-    result[i] = sol.u
+    @inbounds result[i] = sol.u
 end
 
 function SciMLBase.solve!(
@@ -19,13 +19,14 @@ function SciMLBase.solve!(
     backend = opt.backend
 
     prob = remake(cache.prob, lb = nothing, ub = nothing)
-    f = Base.Fix2(prob.f.f, prob.p)
-    ∇f = instantiate_gradient(f, prob.f.adtype)
 
-    kernel = simplebfgs_run!(backend)
     result = cache.start_points
     copyto!(result, x0s)
-    nlprob = NonlinearProblem{false}(∇f, prob.u0)
+
+    ∇f = instantiate_gradient(prob.f.f, prob.f.adtype)
+
+    kernel = simplebfgs_run!(backend)
+    nlprob = SimpleNonlinearSolve.ImmutableNonlinearProblem{false}(∇f, prob.u0, prob.p)
 
     nlalg = LocalOpt isa LBFGS ?
             SimpleLimitedMemoryBroyden(;
