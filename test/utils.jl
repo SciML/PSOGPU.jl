@@ -1,5 +1,4 @@
-const GROUP = get(ENV, "GROUP", "CPU")
-const backend = if GROUP == "CUDA"
+global backend = if GROUP == "CUDA"
     using CUDA
     CUDA.CUDABackend()
 elseif GROUP == "AMDGPU"

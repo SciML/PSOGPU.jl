@@ -22,4 +22,4 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 KernelAbstractions = "<0.9.30"
-julia = "1.6"
+Enzyme = "<0.13.35"
