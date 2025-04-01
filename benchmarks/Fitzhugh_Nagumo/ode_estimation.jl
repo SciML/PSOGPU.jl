@@ -1,6 +1,6 @@
 using Pkg
 Pkg.activate(@__DIR__)
-using PSOGPU, OrdinaryDiffEq, StaticArrays
+using ParallelParticleSwarms, OrdinaryDiffEq, StaticArrays
 using SciMLSensitivity, Optimization
 
 function f(u, p, t)
@@ -91,7 +91,7 @@ using OptimizationOptimJL
 
 optprob = OptimizationProblem(loss, prob.p, (prob, t_short); lb = lb, ub = ub)
 
-using PSOGPU
+using ParallelParticleSwarms
 using CUDA
 
 using Random
@@ -101,7 +101,7 @@ rng = Random.default_rng()
 Random.seed!(rng, 0)
 
 opt = ParallelPSOKernel(n_particles)
-gbest, particles = PSOGPU.init_particles(optprob, opt, typeof(prob.u0))
+gbest, particles = ParallelParticleSwarms.init_particles(optprob, opt, typeof(prob.u0))
 
 gpu_data = cu([SVector{length(prob.u0), eltype(prob.u0)}(@view data_short[:, i])
                for i in 1:length(t_short)])
@@ -118,7 +118,7 @@ solver_cache = (; losses, gpu_particles, gpu_data, gbest)
 
 adaptive = false
 
-@time gsol = PSOGPU.parameter_estim_ode!(prob,
+@time gsol = ParallelParticleSwarms.parameter_estim_ode!(prob,
     solver_cache,
     lb,
     ub, Val(adaptive);
@@ -128,7 +128,7 @@ adaptive = false
 
 using BenchmarkTools
 
-@benchmark PSOGPU.parameter_estim_ode!($prob,
+@benchmark ParallelParticleSwarms.parameter_estim_ode!($prob,
     $(deepcopy(solver_cache)),
     $lb,
     $ub, $Val(adaptive);

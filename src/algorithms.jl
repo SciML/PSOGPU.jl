@@ -145,7 +145,7 @@ end
 
 function HybridPSO(;
         backend = CPU(),
-        pso = PSOGPU.ParallelPSOKernel(100; global_update = false, backend),
+        pso = ParallelParticleSwarms.ParallelPSOKernel(100; global_update = false, backend),
         local_opt = LBFGS())
     HybridPSO(pso, local_opt, backend)
 end

@@ -47,11 +47,11 @@ ub = SVector{length(p_static), eltype(p_static)}(fill(eltype(p_static)(10),
 
 optprob = OptimizationProblem(loss, prob_nn.p[2], (prob_nn, tsteps); lb = lb, ub = ub)
 
-using PSOGPU
+using ParallelParticleSwarms
 using CUDA
 
 opt = ParallelPSOKernel(n_particles)
-gbest, particles = PSOGPU.init_particles(optprob, opt, typeof(prob.u0))
+gbest, particles = ParallelParticleSwarms.init_particles(optprob, opt, typeof(prob.u0))
 
 gpu_data = cu([SVector{length(prob_nn.u0), eltype(prob_nn.u0)}(@view data[:, i])
                for i in 1:length(tsteps)])
@@ -64,7 +64,7 @@ function prob_func(prob, gpu_particle)
     return remake(prob, p = (prob.p[1], gpu_particle.position))
 end
 
-@time gsol = PSOGPU.parameter_estim_ode!(prob_nn,
+@time gsol = ParallelParticleSwarms.parameter_estim_ode!(prob_nn,
     gpu_particles,
     gbest,
     gpu_data,

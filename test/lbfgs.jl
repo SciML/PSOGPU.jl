@@ -1,4 +1,4 @@
-using PSOGPU, Optimization, StaticArrays
+using ParallelParticleSwarms, Optimization, StaticArrays
 
 include("./utils.jl")
 
@@ -12,7 +12,7 @@ x0 = SVector{2}(x0)
 prob = OptimizationProblem(optprob, x0)
 l1 = objf(x0, nothing)
 sol = Optimization.solve(prob,
-    PSOGPU.LBFGS(),
+    ParallelParticleSwarms.LBFGS(),
     maxiters = 10)
 
 N = 10
@@ -30,21 +30,22 @@ prob = OptimizationProblem(optf, x0, p)
 l0 = rosenbrock(x0, p)
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.LBFGS(; threshold = 7),
+    ParallelParticleSwarms.LBFGS(; threshold = 7),
     maxiters = 20)
 @show sol.objective
 @time sol = Optimization.solve(prob,
-    PSOGPU.ParallelPSOKernel(100; backend),
+    ParallelParticleSwarms.ParallelPSOKernel(100; backend),
     maxiters = 100)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSO(; backend),
+    ParallelParticleSwarms.HybridPSO(; backend),
     maxiters = 30)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSO(; local_opt = PSOGPU.BFGS(), backend = backend),
+    ParallelParticleSwarms.HybridPSO(;
+        local_opt = ParallelParticleSwarms.BFGS(), backend = backend),
     maxiters = 30)
 @show sol.objective
 
@@ -53,20 +54,21 @@ prob = OptimizationProblem(optf, x0, p)
 l0 = rosenbrock(x0, p)
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.LBFGS(; threshold = 7),
+    ParallelParticleSwarms.LBFGS(; threshold = 7),
     maxiters = 20)
 @show sol.objective
 @time sol = Optimization.solve(prob,
-    PSOGPU.ParallelPSOKernel(100, backend = backend),
+    ParallelParticleSwarms.ParallelPSOKernel(100, backend = backend),
     maxiters = 100)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSO(; backend = backend),
+    ParallelParticleSwarms.HybridPSO(; backend = backend),
     local_maxiters = 30)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    PSOGPU.HybridPSO(; local_opt = PSOGPU.BFGS(), backend = backend),
+    ParallelParticleSwarms.HybridPSO(;
+        local_opt = ParallelParticleSwarms.BFGS(), backend = backend),
     local_maxiters = 30)
 @show sol.objective

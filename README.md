@@ -1,7 +1,7 @@
-# PSOGPU
+# ParallelParticleSwarms
 
-[![Build Status](https://github.com/utkarsh530/PSOGPU.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/utkarsh530/PSOGPU.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/utkarsh530/PSOGPU.jl/graph/badge.svg?token=H5U5UAIRXX)](https://codecov.io/gh/utkarsh530/PSOGPU.jl)
+[![Build Status](https://github.com/utkarsh530/ParallelParticleSwarms.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/utkarsh530/ParallelParticleSwarms.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![codecov](https://codecov.io/gh/utkarsh530/ParallelParticleSwarms.jl/graph/badge.svg?token=H5U5UAIRXX)](https://codecov.io/gh/utkarsh530/ParallelParticleSwarms.jl)
 
 Accelerating convex/non-convex optimization with GPUs using Particle-Swarm based methods
 
@@ -9,7 +9,7 @@ Supports generic Julia's SciML interface
 
 ```julia
 
-using PSOGPU, StaticArrays, CUDA
+using ParallelParticleSwarms, StaticArrays, CUDA
 
 lb = @SArray [-1.0f0, -1.0f0, -1.0f0]
 ub = @SArray [10.0f0, 10.0f0, 10.0f0]

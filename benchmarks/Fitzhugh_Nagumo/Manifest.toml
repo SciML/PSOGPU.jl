@@ -1515,7 +1515,7 @@ git-tree-sha1 = "8b3b19351fa24791f94d7ae85faf845ca1362541"
 uuid = "32165bc3-0280-59bc-8c0b-c33b6203efab"
 version = "4.2.7+0"
 
-[[deps.PSOGPU]]
+[[deps.ParallelParticleSwarms]]
 deps = ["Adapt", "CUDA", "DiffEqGPU", "Enzyme", "ForwardDiff", "KernelAbstractions", "MLDatasets", "NonlinearSolve", "Optimization", "QuasiMonteCarlo", "Random", "SciMLBase", "Setfield", "SimpleChains", "SimpleNonlinearSolve", "StaticArrays"]
 path = "../.."
 uuid = "ab63da0c-63b4-40fa-a3b7-d2cba5be6419"

@@ -1,4 +1,5 @@
-using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random, KernelAbstractions
+using ParallelParticleSwarms, StaticArrays, SciMLBase, Test, LinearAlgebra, Random,
+      KernelAbstractions
 using QuasiMonteCarlo
 
 ## Solving the rosenbrock problem
@@ -28,10 +29,14 @@ cache = init(prob, ParallelSyncPSOKernel(n_particles; backend = CPU()))
 
 reinit!(cache)
 
-cache = init(prob, PSOGPU.HybridPSO(; local_opt = PSOGPU.BFGS(), backend = CPU()))
+cache = init(prob,
+    ParallelParticleSwarms.HybridPSO(;
+        local_opt = ParallelParticleSwarms.BFGS(), backend = CPU()))
 
 reinit!(cache)
 
-cache = init(prob, PSOGPU.HybridPSO(; local_opt = PSOGPU.LBFGS(), backend = CPU()))
+cache = init(prob,
+    ParallelParticleSwarms.HybridPSO(;
+        local_opt = ParallelParticleSwarms.LBFGS(), backend = CPU()))
 
 reinit!(cache)
