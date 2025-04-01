@@ -2,7 +2,7 @@ using Pkg
 
 Pkg.activate(@__DIR__)
 
-using PSOGPU, StaticArrays, KernelAbstractions, Optimization
+using ParallelParticleSwarms, StaticArrays, KernelAbstractions, Optimization
 using CUDA
 
 device!(2)
@@ -55,11 +55,11 @@ sol = solve(prob,
 @show sol.stats.time
 
 sol = solve(prob,
-    PSOGPU.HybridPSO(; backend = CUDABackend(),
-        pso = PSOGPU.ParallelPSOKernel(n_particles;
+    ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+        pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles;
             global_update = false,
             backend = CUDABackend()),
-        local_opt = PSOGPU.LBFGS()), maxiters = 500,
+        local_opt = ParallelParticleSwarms.LBFGS()), maxiters = 500,
     local_maxiters = 30)
 
 @show sol.objective
@@ -91,7 +91,7 @@ function solve_run(prob, alg, maxiters; runs = 10, kwargs...)
     # 4 was a good candidate
     Random.seed!(rng, 1)
     for run in 1:runs
-        sol = if alg isa PSOGPU.HybridPSO
+        sol = if alg isa ParallelParticleSwarms.HybridPSO
             solve(prob, alg; maxiters, local_maxiters = 30)
         else
             solve(prob, alg; maxiters, kwargs...)
@@ -135,11 +135,11 @@ for n_particles in Ns
     push!(gpu_queue_lock_times, sol_time)
 
     obj, solve_time = solve_run(prob,
-        PSOGPU.HybridPSO(; backend = CUDABackend(),
-            pso = PSOGPU.ParallelPSOKernel(n_particles;
+        ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+            pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles;
                 global_update = false,
                 backend = CUDABackend()),
-            local_opt = PSOGPU.LBFGS()), 500)
+            local_opt = ParallelParticleSwarms.LBFGS()), 500)
 
     push!(gpu_hybrid_loss, obj)
     push!(gpu_hybrid_times, solve_time)
@@ -256,11 +256,11 @@ sol = solve(prob,
 @show sol.stats.time
 
 sol = solve(prob,
-    PSOGPU.HybridPSO(; backend = CUDABackend(),
-        pso = PSOGPU.ParallelPSOKernel(n_particles;
+    ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+        pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles;
             global_update = false,
             backend = CUDABackend()),
-        local_opt = PSOGPU.LBFGS()), maxiters = 500,
+        local_opt = ParallelParticleSwarms.LBFGS()), maxiters = 500,
     local_maxiters = 30)
 
 @show sol.objective
@@ -300,7 +300,7 @@ function solve_run(prob, alg, maxiters; runs = 10, kwargs...)
     # 4 was a good candidate
     Random.seed!(rng, 9)
     for run in 1:runs
-        sol = if alg isa PSOGPU.HybridPSO
+        sol = if alg isa ParallelParticleSwarms.HybridPSO
             solve(prob, alg; maxiters, local_maxiters = maxiters)
         else
             solve(prob, alg; maxiters, kwargs...)
@@ -377,23 +377,23 @@ begin
         push!(pso_cpu_time, sol_time)
 
         # sol = solve(prob,
-        #     PSOGPU.HybridPSO(; backend = CUDABackend(),
-        #     pso = PSOGPU.ParallelPSOKernel(n_particles; global_update = false, backend = CUDABackend()),
-        #     local_opt = PSOGPU.LBFGS()), maxiters = iters,
+        #     ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+        #     pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles; global_update = false, backend = CUDABackend()),
+        #     local_opt = ParallelParticleSwarms.LBFGS()), maxiters = iters,
         #     local_maxiters = iters)
 
         # sol = solve(prob,
-        #         PSOGPU.HybridPSO(; backend = CUDABackend(),
-        #         pso = PSOGPU.ParallelPSOKernel(n_particles; global_update = false, backend = CUDABackend()),
-        #         local_opt = PSOGPU.LBFGS()), maxiters = iters,
+        #         ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+        #         pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles; global_update = false, backend = CUDABackend()),
+        #         local_opt = ParallelParticleSwarms.LBFGS()), maxiters = iters,
         #         local_maxiters = iters)
 
         obj, solve_time = solve_run(prob,
-            PSOGPU.HybridPSO(; backend = CUDABackend(),
-                pso = PSOGPU.ParallelPSOKernel(n_particles;
+            ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+                pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles;
                     global_update = false,
                     backend = CUDABackend()),
-                local_opt = PSOGPU.LBFGS()), iters)
+                local_opt = ParallelParticleSwarms.LBFGS()), iters)
 
         push!(hybrid_losses, obj)
         push!(hybrid_time, solve_time)

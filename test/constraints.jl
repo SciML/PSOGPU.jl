@@ -1,4 +1,4 @@
-using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random
+using ParallelParticleSwarms, StaticArrays, SciMLBase, Test, LinearAlgebra, Random
 
 include("./utils.jl")
 

@@ -1,4 +1,4 @@
-using PSOGPU, StaticArrays, SciMLBase, Test, LinearAlgebra, Random, KernelAbstractions
+using ParallelParticleSwarms, StaticArrays, SciMLBase, Test, LinearAlgebra, Random, KernelAbstractions
 using QuasiMonteCarlo
 
 @testset "Rosenbrock test dimension = $(N)" for N in 2:3

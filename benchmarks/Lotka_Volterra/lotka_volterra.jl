@@ -83,7 +83,7 @@ using OptimizationOptimJL
 
 optprob = OptimizationProblem(loss, prob.p, (prob, t_short); lb = lb, ub = ub)
 
-using PSOGPU
+using ParallelParticleSwarms
 using CUDA
 
 CUDA.allowscalar(false)
@@ -91,7 +91,7 @@ CUDA.allowscalar(false)
 n_particles = 10_000
 
 opt = ParallelPSOKernel(n_particles)
-gbest, particles = PSOGPU.init_particles(optprob, opt, typeof(prob.u0))
+gbest, particles = ParallelParticleSwarms.init_particles(optprob, opt, typeof(prob.u0))
 
 @show gbest
 
@@ -114,13 +114,13 @@ solver_cache = (; losses, gpu_particles, gpu_data, gbest)
 
 adaptive = false
 
-@time gsol = PSOGPU.parameter_estim_ode!(prob, solver_cache,
+@time gsol = ParallelParticleSwarms.parameter_estim_ode!(prob, solver_cache,
     lb,
     ub, Val(adaptive); saveat = t_short, dt = 0.1, maxiters = 100)
 
 using BenchmarkTools
 
-@benchmark PSOGPU.parameter_estim_ode!($prob, $(deepcopy(solver_cache)),
+@benchmark ParallelParticleSwarms.parameter_estim_ode!($prob, $(deepcopy(solver_cache)),
     $lb,
     $ub, Val(adaptive); saveat = t_short, dt = 0.1, maxiters = 100)
 

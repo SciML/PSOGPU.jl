@@ -1,4 +1,4 @@
-using NeuralPDE, Lux, Optimization, OptimizationOptimJL, PSOGPU
+using NeuralPDE, Lux, Optimization, OptimizationOptimJL, ParallelParticleSwarms
 import ModelingToolkit: Interval
 
 @parameters t, x

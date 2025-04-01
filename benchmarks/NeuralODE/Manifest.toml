@@ -1723,9 +1723,9 @@ git-tree-sha1 = "949347156c25054de2db3b166c52ac4728cbad65"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
 version = "0.11.31"
 
-[[deps.PSOGPU]]
+[[deps.ParallelParticleSwarms]]
 deps = ["Adapt", "CUDA", "DiffEqGPU", "Enzyme", "ForwardDiff", "KernelAbstractions", "MLDatasets", "NonlinearSolve", "Optimization", "QuasiMonteCarlo", "Random", "SciMLBase", "Setfield", "SimpleChains", "SimpleNonlinearSolve", "StaticArrays"]
-path = "/home/utkarsh530/.julia/dev/PSOGPU"
+path = "/home/utkarsh530/.julia/dev/ParallelParticleSwarms"
 uuid = "ab63da0c-63b4-40fa-a3b7-d2cba5be6419"
 version = "1.0.0-DEV"
 

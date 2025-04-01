@@ -2,7 +2,7 @@ using Pkg
 
 Pkg.activate(@__DIR__)
 
-using PSOGPU, StaticArrays, KernelAbstractions, Optimization
+using ParallelParticleSwarms, StaticArrays, KernelAbstractions, Optimization
 using CUDA
 
 device!(2)
@@ -51,11 +51,11 @@ sol = solve(prob,
 @show sol.stats.time
 
 sol = solve(prob,
-    PSOGPU.HybridPSO(; backend = CUDABackend(),
-        pso = PSOGPU.ParallelPSOKernel(n_particles;
+    ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+        pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles;
             global_update = false,
             backend = CUDABackend()),
-        local_opt = PSOGPU.LBFGS()), maxiters = 500,
+        local_opt = ParallelParticleSwarms.LBFGS()), maxiters = 500,
     local_maxiters = 30)
 
 @show sol.objective
@@ -77,7 +77,7 @@ for n_particles in Ns
     ## CPU solve
     backend = CPU()
     opt = ParallelSyncPSOKernel(n_particles; backend)
-    init_gbest, particles = PSOGPU.init_particles(prob, opt, typeof(prob.u0))
+    init_gbest, particles = ParallelParticleSwarms.init_particles(prob, opt, typeof(prob.u0))
 
     particles_eltype = eltype(particles) === Float64 ? Float32 : eltype(particles)
 
@@ -87,12 +87,12 @@ for n_particles in Ns
 
     copyto!(backend_particles, particles)
 
-    PSOGPU.vectorized_solve!(prob,
+    ParallelParticleSwarms.vectorized_solve!(prob,
         init_gbest,
         backend_particles,
         opt; maxiters = 500)
 
-    el_time = @elapsed PSOGPU.vectorized_solve!(prob,
+    el_time = @elapsed ParallelParticleSwarms.vectorized_solve!(prob,
         init_gbest,
         backend_particles,
         opt; maxiters = 500)
@@ -112,12 +112,12 @@ for n_particles in Ns
 
     copyto!(backend_particles, particles)
 
-    PSOGPU.vectorized_solve!(prob,
+    ParallelParticleSwarms.vectorized_solve!(prob,
         init_gbest,
         backend_particles,
         opt; maxiters = 500)
 
-    el_time = @elapsed PSOGPU.vectorized_solve!(prob,
+    el_time = @elapsed ParallelParticleSwarms.vectorized_solve!(prob,
         init_gbest,
         backend_particles,
         opt; maxiters = 500)
@@ -129,12 +129,12 @@ for n_particles in Ns
     gpu_init_gbest = KernelAbstractions.allocate(backend, typeof(init_gbest), (1,))
     copyto!(gpu_init_gbest, [init_gbest])
 
-    PSOGPU.vectorized_solve!(prob,
+    ParallelParticleSwarms.vectorized_solve!(prob,
         gpu_init_gbest,
         backend_particles,
         opt, Val(opt.global_update); maxiters = 500)
 
-    el_time = @elapsed PSOGPU.vectorized_solve!(prob,
+    el_time = @elapsed ParallelParticleSwarms.vectorized_solve!(prob,
         gpu_init_gbest,
         backend_particles,
         opt, Val(opt.global_update); maxiters = 500)
@@ -146,12 +146,12 @@ for n_particles in Ns
     gpu_init_gbest = KernelAbstractions.allocate(backend, typeof(init_gbest), (1,))
     copyto!(gpu_init_gbest, [init_gbest])
 
-    PSOGPU.vectorized_solve!(prob,
+    ParallelParticleSwarms.vectorized_solve!(prob,
         gpu_init_gbest,
         backend_particles,
         opt, Val(opt.global_update); maxiters = 500)
 
-    el_time = @elapsed PSOGPU.vectorized_solve!(prob,
+    el_time = @elapsed ParallelParticleSwarms.vectorized_solve!(prob,
         gpu_init_gbest,
         backend_particles,
         opt, Val(opt.global_update); maxiters = 500)
@@ -167,19 +167,19 @@ for n_particles in Ns
     @info n_particles
 
     sol = solve(prob,
-        PSOGPU.HybridPSO(; backend = CUDABackend(),
-            pso = PSOGPU.ParallelPSOKernel(n_particles;
+        ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+            pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles;
                 global_update = false,
                 backend = CUDABackend()),
-            local_opt = PSOGPU.LBFGS()), maxiters = 500,
+            local_opt = ParallelParticleSwarms.LBFGS()), maxiters = 500,
         local_maxiters = 30)
 
     sol = solve(prob,
-        PSOGPU.HybridPSO(; backend = CUDABackend(),
-            pso = PSOGPU.ParallelPSOKernel(n_particles;
+        ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+            pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles;
                 global_update = false,
                 backend = CUDABackend()),
-            local_opt = PSOGPU.LBFGS()), maxiters = 500,
+            local_opt = ParallelParticleSwarms.LBFGS()), maxiters = 500,
         local_maxiters = 30)
 
     push!(gpu_hybrid_times, sol.stats.time)
@@ -309,15 +309,15 @@ using Statistics
 #     push!(gpu_queue_lock_times_total, el_time)
 
 #     sol = solve(prob,
-#         PSOGPU.HybridPSO(; backend = CUDABackend(),
-#         pso = PSOGPU.ParallelPSOKernel(n_particles; global_update = false, backend = CUDABackend()),
-#         local_opt = PSOGPU.LBFGS()), maxiters = 500,
+#         ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+#         pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles; global_update = false, backend = CUDABackend()),
+#         local_opt = ParallelParticleSwarms.LBFGS()), maxiters = 500,
 #         local_maxiters = 30)
 
 #     el_time = @elapsed solve(prob,
-#     PSOGPU.HybridPSO(; backend = CUDABackend(),
-#     pso = PSOGPU.ParallelPSOKernel(n_particles; global_update = false, backend = CUDABackend()),
-#     local_opt = PSOGPU.LBFGS()), maxiters = 500,
+#     ParallelParticleSwarms.HybridPSO(; backend = CUDABackend(),
+#     pso = ParallelParticleSwarms.ParallelPSOKernel(n_particles; global_update = false, backend = CUDABackend()),
+#     local_opt = ParallelParticleSwarms.LBFGS()), maxiters = 500,
 #     local_maxiters = 30)
 
 #     push!(gpu_hybrid_times_total, el_time)

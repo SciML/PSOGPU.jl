@@ -60,7 +60,7 @@ optprob = Optimization.OptimizationProblem(optf, p_nn)
 
 @benchmark Optimization.solve(optprob, ADAM(0.05), maxiters = 100)
 
-## PSOGPU stuff
+## ParallelParticleSwarms stuff
 
 function nn_fn(u::T, p, t)::T where {T}
     nn, ps = p
@@ -92,7 +92,7 @@ ub = @SArray fill(Float32(Inf), length(p_static))
 
 soptprob = OptimizationProblem(loss, prob_nn.p[2], (prob_nn, tsteps); lb = lb, ub = ub)
 
-using PSOGPU
+using ParallelParticleSwarms
 using CUDA
 using KernelAbstractions
 using Adapt
@@ -100,7 +100,7 @@ using Adapt
 backend = CUDABackend()
 
 ## Initialize Particles
-gbest, particles = PSOGPU.init_particles(soptprob,
+gbest, particles = ParallelParticleSwarms.init_particles(soptprob,
     ParallelSyncPSOKernel(n_particles; backend = CUDABackend()),
     typeof(prob.u0))
 
@@ -120,7 +120,7 @@ losses = adapt(backend, ones(eltype(prob.u0), (1, n_particles)))
 
 solver_cache = (; losses, gpu_particles, gpu_data, gbest)
 
-@time gsol = PSOGPU.parameter_estim_ode!(prob_nn,
+@time gsol = ParallelParticleSwarms.parameter_estim_ode!(prob_nn,
     solver_cache,
     lb,
     ub;
@@ -129,7 +129,7 @@ solver_cache = (; losses, gpu_particles, gpu_data, gbest)
     prob_func = prob_func,
     maxiters = 100)
 
-@benchmark PSOGPU.parameter_estim_ode!($prob_nn,
+@benchmark ParallelParticleSwarms.parameter_estim_ode!($prob_nn,
     $(deepcopy(solver_cache)),
     $lb,
     $ub;

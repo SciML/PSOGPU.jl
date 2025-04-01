@@ -55,8 +55,8 @@ function parameter_estim_ode!(prob::ODEProblem, cache,
         maxiters = 100, kwargs...)
     (losses, gpu_particles, gpu_data, gbest) = cache
     backend = get_backend(gpu_particles)
-    update_states! = PSOGPU._update_particle_states!(backend)
-    update_costs! = PSOGPU._update_particle_costs!(backend)
+    update_states! = ParallelParticleSwarms._update_particle_states!(backend)
+    update_costs! = ParallelParticleSwarms._update_particle_costs!(backend)
 
     improb = make_prob_compatible(prob)
 
@@ -92,7 +92,7 @@ function parameter_estim_ode!(prob::ODEProblem, cache,
 
         KernelAbstractions.synchronize(backend)
 
-        gbest = PSOGPU.SPSOGBest(best_particle.best_position, best_particle.best_cost)
+        gbest = ParallelParticleSwarms.SPSOGBest(best_particle.best_position, best_particle.best_cost)
         w = w * wdamp
     end
     return gbest
@@ -108,8 +108,8 @@ function parameter_estim_ode!(prob::ODEProblem, cache,
         maxiters = 100, kwargs...)
     (losses, gpu_particles, gpu_data, gbest) = cache
     backend = get_backend(gpu_particles)
-    update_states! = PSOGPU._update_particle_states!(backend)
-    update_costs! = PSOGPU._update_particle_costs!(backend)
+    update_states! = ParallelParticleSwarms._update_particle_states!(backend)
+    update_costs! = ParallelParticleSwarms._update_particle_costs!(backend)
 
     improb = make_prob_compatible(prob)
 
@@ -145,7 +145,7 @@ function parameter_estim_ode!(prob::ODEProblem, cache,
 
         KernelAbstractions.synchronize(backend)
 
-        gbest = PSOGPU.SPSOGBest(best_particle.best_position, best_particle.best_cost)
+        gbest = ParallelParticleSwarms.SPSOGBest(best_particle.best_position, best_particle.best_cost)
         w = w * wdamp
     end
     return gbest

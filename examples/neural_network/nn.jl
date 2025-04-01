@@ -45,7 +45,7 @@ p = SimpleChains.init_params(lenet);
 
 lenetloss(xtrain, p)
 
-using Optimization, PSOGPU
+using Optimization, ParallelParticleSwarms
 
 lb = -ones(length(p)) .* 10
 ub = ones(length(p)) .* 10
