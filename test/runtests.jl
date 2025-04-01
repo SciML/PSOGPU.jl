@@ -1,12 +1,15 @@
 using SafeTestsets
 using Test
 
-const GROUP = get(ENV, "GROUP", "CPU")
+global CI_GROUP = get(ENV, "GROUP", "CPU")
 
 @safetestset "Regression tests" include("./regression.jl")
+@safetestset "Reinitialization tests" include("./reinit.jl")
 
-if GROUP != "CPU"
-    @safetestset "GPU optimizers tests" include("./gpu.jl")
-    @safetestset "GPU optimizers with constraints tests" include("./constraints.jl")
-    @safetestset "GPU hybrid optimizers" include("./lbfgs.jl")
+#TODO: Curent throws warning for redefinition with the use of @testset multiple times. Migrate to TestItemRunners.jl
+@testset for BACKEND in unique(("CPU", CI_GROUP))
+    global GROUP = BACKEND
+    @testset "$(BACKEND) optimizers tests" include("./gpu.jl")
+    @testset "$(BACKEND) optimizers with constraints tests" include("./constraints.jl")
+    @testset "$(BACKEND) hybrid optimizers" include("./lbfgs.jl")
 end

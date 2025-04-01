@@ -7,9 +7,12 @@ lb = @SArray fill(Float32(-1.0), 3)
 ub = @SArray fill(Float32(10.0), 3)
 
 function rosenbrock(x, p)
-    sum(p[2] * (x[i + 1] - x[i]^2)^2 + (p[1] - x[i])^2 for i in 1:(length(x) - 1))
+    res = zero(eltype(x))
+    for i in 1:(length(x) - 1)
+        res += p[2] * (x[i + 1] - x[i]^2)^2 + (p[1] - x[i])^2
+    end
+    res
 end
-
 x0 = @SArray zeros(Float32, 3)
 p = @SArray Float32[1.0, 100.0]
 
@@ -25,10 +28,10 @@ cache = init(prob, ParallelSyncPSOKernel(n_particles; backend = CPU()))
 
 reinit!(cache)
 
-cache = init(prob, PSOGPU.HybridPSO(; local_opt = PSOGPU.BFGS(), backend = backend))
+cache = init(prob, PSOGPU.HybridPSO(; local_opt = PSOGPU.BFGS(), backend = CPU()))
 
 reinit!(cache)
 
-cache = init(prob, PSOGPU.HybridPSO(; local_opt = PSOGPU.LBFGS(), backend = backend))
+cache = init(prob, PSOGPU.HybridPSO(; local_opt = PSOGPU.LBFGS(), backend = CPU()))
 
 reinit!(cache)

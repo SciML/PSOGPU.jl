@@ -9,7 +9,11 @@ device!(2)
 
 N = 10
 function rosenbrock(x, p)
-    sum(p[2] * (x[i + 1] - x[i]^2)^2 + (p[1] - x[i])^2 for i in 1:(length(x) - 1))
+    res = zero(eltype(x))
+    for i in 1:(length(x) - 1)
+        res += p[2] * (x[i + 1] - x[i]^2)^2 + (p[1] - x[i])^2
+    end
+    res
 end
 # x0 = @SArray zeros(Float32, N)
 

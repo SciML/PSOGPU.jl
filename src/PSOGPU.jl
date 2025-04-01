@@ -4,7 +4,7 @@ using SciMLBase, StaticArrays, Setfield, KernelAbstractions
 using QuasiMonteCarlo, Optimization, SimpleNonlinearSolve, ForwardDiff
 import Adapt
 import Adapt: adapt
-import Enzyme: autodiff_deferred, Active, Reverse
+import Enzyme: autodiff_deferred, Active, Reverse, Const
 import KernelAbstractions: @atomic, @atomicreplace, @atomicswap
 using QuasiMonteCarlo
 import DiffEqGPU: GPUTsit5, make_prob_compatible, vectorized_solve, vectorized_asolve
