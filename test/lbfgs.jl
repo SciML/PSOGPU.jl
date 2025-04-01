@@ -44,7 +44,8 @@ l0 = rosenbrock(x0, p)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    ParallelParticleSwarms.HybridPSO(; local_opt = ParallelParticleSwarms.BFGS(), backend = backend),
+    ParallelParticleSwarms.HybridPSO(;
+        local_opt = ParallelParticleSwarms.BFGS(), backend = backend),
     maxiters = 30)
 @show sol.objective
 
@@ -67,6 +68,7 @@ l0 = rosenbrock(x0, p)
 @show sol.objective
 
 @time sol = Optimization.solve(prob,
-    ParallelParticleSwarms.HybridPSO(; local_opt = ParallelParticleSwarms.BFGS(), backend = backend),
+    ParallelParticleSwarms.HybridPSO(;
+        local_opt = ParallelParticleSwarms.BFGS(), backend = backend),
     local_maxiters = 30)
 @show sol.objective

@@ -92,7 +92,8 @@ function parameter_estim_ode!(prob::ODEProblem, cache,
 
         KernelAbstractions.synchronize(backend)
 
-        gbest = ParallelParticleSwarms.SPSOGBest(best_particle.best_position, best_particle.best_cost)
+        gbest = ParallelParticleSwarms.SPSOGBest(
+            best_particle.best_position, best_particle.best_cost)
         w = w * wdamp
     end
     return gbest
@@ -145,7 +146,8 @@ function parameter_estim_ode!(prob::ODEProblem, cache,
 
         KernelAbstractions.synchronize(backend)
 
-        gbest = ParallelParticleSwarms.SPSOGBest(best_particle.best_position, best_particle.best_cost)
+        gbest = ParallelParticleSwarms.SPSOGBest(
+            best_particle.best_position, best_particle.best_cost)
         w = w * wdamp
     end
     return gbest
