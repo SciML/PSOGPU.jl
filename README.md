@@ -1,11 +1,14 @@
-# ParallelParticleSwarms
+# ParallelParticleSwarms.jl
 
-[![Build Status](https://github.com/utkarsh530/ParallelParticleSwarms.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/utkarsh530/ParallelParticleSwarms.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![CI](https://github.com/SciML/ParallelParticleSwarms.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/SciML/ParallelParticleSwarms.jl/actions/workflows/CI.yml)
+[![Build status](https://badge.buildkite.com/caf5d6f9d5129b5796049b085df39fd8fab055826b513d361e.svg)](https://buildkite.com/julialang/parallelparticleswarms-dot-jl)
 [![codecov](https://codecov.io/gh/utkarsh530/ParallelParticleSwarms.jl/graph/badge.svg?token=H5U5UAIRXX)](https://codecov.io/gh/utkarsh530/ParallelParticleSwarms.jl)
+[![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
+[![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
 
-Accelerating convex/non-convex optimization with GPUs using Particle-Swarm based methods
+Accelerating convex/non-convex optimization with GPUs using Particle-Swarm based methods.
 
-Supports generic Julia's SciML interface
+Supports Julia's generic SciML interface.
 
 ```julia
 
